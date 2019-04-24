@@ -3,20 +3,28 @@ export default {
     let bindings = []
 
     const generateUrl = ({target}) => {
-      if (typeof target === 'object' && target.hasOwnProperty('@id')) {
-        return baseURL + target['@id']
-      }
-      if (typeof target === 'string') {
-        return baseURL + target
+      if (target) {
+        if (typeof target === 'object' && target.hasOwnProperty('@id')) {
+          return baseURL + target['@id']
+        }
+        if (typeof target === 'string') {
+          return baseURL + target
+        }
       }
     }
 
     const getHubUrlFromResponse = response => {
-      return response
+      if (response
         && response.headers
         && response.headers.get
         && response.headers.get('Link')
-          .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)[1]
+      ) {
+        const matches = response.headers.get('Link')
+          .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
+        if (matches) {
+          return matches[1]
+        }
+      }
     }
 
     Vue.mixin({
@@ -67,29 +75,35 @@ export default {
       if (binding.update < (new Date()).getTime() - cacheTime * 1000 && binding.eventSource === null) {
         binding.update = (new Date()).getTime()
         return fetch(dataUrl).then(response => {
-          const data = response.data
-          binding.data = data
-          binding.components.forEach(component => {
-            component.vm[component.key] = data
-          })
 
-          const hubUrl = getHubUrlFromResponse(response)
+          if (!binding.eventSource) {
+            const hubUrl = getHubUrlFromResponse(response)
 
-          if (hubUrl) {
-            const url = new URL(hubUrl)
-            url.searchParams.append('topic', data['@id'])
+            if (hubUrl) {
+              const url = new URL(hubUrl)
+              url.searchParams.append('topic', data['@id'])
 
-            const eventSource = new EventSource(url.toString())
-            eventSource.onmessage = e => {
-              binding.data = e.data
-              binding.components.forEach(component => {
-                component.vm[component.key] = e.data
-              })
+              const eventSource = new EventSource(url.toString())
+              eventSource.onmessage = e => {
+                binding.data = e.data
+                binding.components.forEach(component => {
+                  component.vm[component.key] = e.data
+                })
+              }
+
+              binding.eventSource = eventSource
+
             }
-
           }
 
-          return data
+          return response.json().then(data => {
+            binding.data = data
+            binding.components.forEach(component => {
+              component.vm[component.key] = data
+            })
+
+            return data
+          })
         })
 
       } else {
