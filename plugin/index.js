@@ -5,7 +5,7 @@ const generateUrl = (data) => {
 }
 
 export default {
-  install(Vue) {
+  install(Vue, {cacheTime = 30} = {}) {
     let bindings = []
 
     Vue.mixin({
@@ -61,7 +61,7 @@ export default {
         bindings.push(binding)
       }
 
-      if (binding.update < (new Date()).getTime() - 30 * 1000 && binding.eventSource === null) {
+      if (binding.update < (new Date()).getTime() - cacheTime * 1000 && binding.eventSource === null) {
         binding.update = (new Date()).getTime()
         return Axios.get(dataUrl).then(response => {
           const data = response.data
