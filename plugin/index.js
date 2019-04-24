@@ -1,12 +1,23 @@
-import Axios from 'axios'
-
-const generateUrl = (data) => {
-  return data.target
-}
-
 export default {
-  install(Vue, {cacheTime = 30} = {}) {
+  install(Vue, {baseURL, cacheTime = 30} = {}) {
     let bindings = []
+
+    const generateUrl = ({target}) => {
+      if (typeof target === 'object' && target.hasOwnProperty('@id')) {
+        return baseURL + target['@id']
+      }
+      if (typeof target === 'string') {
+        return baseURL + target
+      }
+    }
+
+    const getHubUrlFromResponse = response => {
+      return response
+        && response.headers
+        && response.headers.get
+        && response.headers.get('Link')
+          .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)[1]
+    }
 
     Vue.mixin({
       created() {
@@ -28,14 +39,6 @@ export default {
         }
       }
     })
-
-    const getHubUrlFromResponse = response => {
-      return response
-        && response.headers
-        && response.headers.get
-        && response.headers.get('Link')
-          .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)[1]
-    }
 
     Vue.prototype.$bindApi = function (key, data) {
       const dataUrl = generateUrl(data)
@@ -63,7 +66,7 @@ export default {
 
       if (binding.update < (new Date()).getTime() - cacheTime * 1000 && binding.eventSource === null) {
         binding.update = (new Date()).getTime()
-        return Axios.get(dataUrl).then(response => {
+        return fetch(dataUrl).then(response => {
           const data = response.data
           binding.data = data
           binding.components.forEach(component => {
@@ -79,7 +82,7 @@ export default {
             const eventSource = new EventSource(url.toString())
             eventSource.onmessage = e => {
               binding.data = e.data
-              binding.bindings.forEach(component => {
+              binding.components.forEach(component => {
                 component.vm[component.key] = e.data
               })
             }
