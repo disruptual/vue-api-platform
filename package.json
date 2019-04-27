@@ -20,7 +20,5 @@
     "url": "https://github.com/disruptual/vue-api-platform/issues"
   },
   "homepage": "https://github.com/disruptual/vue-api-platform#readme",
-  "dependencies": {
-    "vue": "^2.6.10"
-  }
+  "dependencies": {}
 }
