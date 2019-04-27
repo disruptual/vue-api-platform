@@ -1,5 +1,13 @@
+const api = {
+  requestOptions: {
+    headers: new Headers()
+  }
+}
+
 export default {
   install(Vue, {baseURL, cacheTime = 30} = {}) {
+    Vue.prototype.$api = api
+
     let bindings = []
 
     const generateUrl = ({target}) => {
@@ -74,7 +82,7 @@ export default {
 
       if (binding.update < (new Date()).getTime() - cacheTime * 1000 && binding.eventSource === null) {
         binding.update = (new Date()).getTime()
-        return fetch(dataUrl).then(response => {
+        return fetch(dataUrl, api.requestOptions).then(response => {
 
           if (!binding.eventSource) {
             const hubUrl = getHubUrlFromResponse(response)
