@@ -10,7 +10,7 @@ export default {
 
     let bindings = []
 
-    const generateUrl = ({target}) => {
+    const generateUrl = (target) => {
       if (target) {
         if (typeof target === 'object' && target.hasOwnProperty('@id')) {
           return baseURL + target['@id']
@@ -35,6 +35,8 @@ export default {
       }
     }
 
+    Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods
+
     Vue.mixin({
       created() {
         const apiOptions = this.$options.api
@@ -56,8 +58,8 @@ export default {
       }
     })
 
-    Vue.prototype.$bindApi = function (key, data) {
-      const dataUrl = generateUrl(data)
+    Vue.prototype.$bindApi = function (key, target) {
+      const dataUrl = generateUrl(target)
       if (!dataUrl) {
         this[key] = null
         return
@@ -84,27 +86,28 @@ export default {
         binding.update = (new Date()).getTime()
         return fetch(dataUrl, api.requestOptions).then(response => {
 
-          if (!binding.eventSource) {
-            const hubUrl = getHubUrlFromResponse(response)
-
-            if (hubUrl) {
-              const url = new URL(hubUrl)
-              url.searchParams.append('topic', data['@id'])
-
-              const eventSource = new EventSource(url.toString())
-              eventSource.onmessage = e => {
-                binding.data = e.data
-                binding.components.forEach(component => {
-                  component.vm[component.key] = e.data
-                })
-              }
-
-              binding.eventSource = eventSource
-
-            }
-          }
-
           return response.json().then(data => {
+
+            if (!binding.eventSource) {
+              const hubUrl = getHubUrlFromResponse(response)
+
+              if (hubUrl) {
+                const url = new URL(hubUrl)
+                url.searchParams.append('topic', data['@id'])
+
+                const eventSource = new EventSource(url.toString())
+                eventSource.onmessage = e => {
+                  binding.data = e.data
+                  binding.components.forEach(component => {
+                    component.vm[component.key] = e.data
+                  })
+                }
+
+                binding.eventSource = eventSource
+
+              }
+            }
+
             binding.data = data
             binding.components.forEach(component => {
               component.vm[component.key] = data
