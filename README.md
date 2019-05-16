@@ -29,8 +29,10 @@ export default {
     'user'
   ],
   api: {
-    user_ () {
-      return this.user
+    user_: {
+      computed() {
+        return this.user
+      }
     }
   }
 }
@@ -61,8 +63,10 @@ export default {
     }
   },
   api: {
-    user_ () {
-      return this.user
+    user_: {
+      computed() {
+        return this.user
+      }
     }
   }
 }
@@ -95,8 +99,10 @@ export default {
     }
   },
   api: {
-    user_ () {
-      return this.itemUrl
+    item_: {
+      computed () {
+        return this.itemUrl
+      }
     }
   }
 }
