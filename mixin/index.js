@@ -1,34 +1,47 @@
-export default function (entity, computed=null) {
+export default function (entity, {computed=null, expose=false, collection=false, suffix='_', prefix=''} = {}) {
 
+  const entity_ = prefix + entity + suffix
   const mixin = {
     data() {
       return {
-        [entity + '_']: null
+        [entity_]: null
       }
     }
   }
 
   if (computed) {
-    return {
-      ...mixin,
-      api: {
-        [entity + '_']: computed
+    mixin.api = {
+      [entity_]: computed
+    }
+
+    if (expose) {
+      if (collection) {
+        mixin.computed = {
+          [entity]() {
+            return this[entity_] ? this[entity_]['hydra:member'] : []
+          }
+        }
+      } else {
+        mixin.computed = {
+          [entity]() {
+            return this[entity_]
+          }
+        }
       }
     }
   } else {
-    return {
-      ...mixin,
-      props: {
-        [entity]: {
-          type: [Object, String],
-          required: true
-        }
-      },
-      api: {
-        [entity + '_']() {
-          return this[entity]
-        }
+    mixin.props = {
+      [entity]: {
+        type: [Object, String],
+        required: true
+      }
+    }
+    mixin.api = {
+      [entity_]() {
+        return this[entity]
       }
     }
   }
+
+  return mixin
 }
