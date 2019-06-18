@@ -128,7 +128,7 @@ class Binding {
 }
 
 export default {
-  install(Vue, {baseURL, cacheTime = 30} = {}) {
+  install(Vue, {baseURL = '', cacheTime = 30} = {}) {
     Vue.prototype.$api = api
 
     Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods

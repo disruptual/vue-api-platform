@@ -32,7 +32,6 @@ export default function (entity, {computed=null, expose=false, collection=false,
   } else {
     mixin.props = {
       [entity]: {
-        type: [Object, String],
         required: true
       }
     }
