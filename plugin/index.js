@@ -114,7 +114,7 @@ class Binding {
       return {
         ...this.data_,
         'hydra:member': this.data_['hydra:member'].map(member => {
-          return bindings.find(binding => binding.targets.includes(member['@id'])) || member
+          return bindings.find(binding => binding.targets.includes(member['@id'])).data || member
         })
       }
     } else {
