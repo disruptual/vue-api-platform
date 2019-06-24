@@ -160,11 +160,17 @@ export default {
         this[key] = null
         return
       }
+
       let binding = bindings.find(binding => binding.targets.includes(dataUrl))
 
       if (!binding) {
         binding = new Binding(dataUrl, this, key)
         bindings.push(binding)
+      } else if (!binding.components.find(component => component.vm === this && component.key === key)) {
+        binding.components.push({
+          vm: this,
+          key
+        })
       }
 
       if (binding.update < (new Date()).getTime() - cacheTime * 1000) {
@@ -216,12 +222,6 @@ export default {
         })
 
       } else {
-        if (!binding.components.find(component => component.vm === this && component.key === key)) {
-          binding.components.push({
-            vm: this,
-            key
-          })
-        }
 
         this[key] = binding.data
 
