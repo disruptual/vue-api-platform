@@ -1,6 +1,6 @@
 {
   "name": "vue-api-platform",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "Link between APIPlatfrom (and mercure) and Vuejs",
   "main": "index.js",
   "scripts": {
@@ -20,5 +20,7 @@
     "url": "https://github.com/disruptual/vue-api-platform/issues"
   },
   "homepage": "https://github.com/disruptual/vue-api-platform#readme",
-  "dependencies": {}
+  "dependencies": {
+    "lodash": "^4.17.11"
+  }
 }

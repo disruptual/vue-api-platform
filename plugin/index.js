@@ -1,107 +1,103 @@
-const api = {
-  requestOptions: {
-    headers: new Headers()
-  }
-}
+import uniq from 'lodash.uniq'
 
 let bindings = []
+let caches = []
 
-let mercureHubs = {}
+//
+// let mercureHubs = {}
+//
+// class MercureHub {
+//   constructor(hubUrl, ...topics) {
+//     this.topics = topics
+//
+//     const url = new URL(hubUrl)
+//     topics.forEach(topic => {
+//       url.searchParams.append('topic', topic)
+//     })
+//
+//     this.eventSource = new EventSource(url.toString())
+//     this.eventSource.onmessage = e => {
+//       binding.data = e.data
+//       binding.components.forEach(component => {
+//         component.vm[component.key] = e.data
+//       })
+//     }
+//   }
+//
+//   static bind(hubUrl, ...topics) {
+//     let hub = mercureHubs[hubUrl]
+//     if (hub) {
+//       const oldHub = hub
+//
+//       hub = new MercureHub(hubUrl, ...[...oldHub.topics, ...topics])
+//       mercureHubs[hubUrl] = hub
+//
+//       oldHub.eventSource.close()
+//
+//       return hub
+//     } else {
+//       hub = new MercureHub(hubUrl, ...topics)
+//       mercureHubs[hubUrl] = hub
+//       return hub
+//     }
+//   }
+//
+//   static unbind(hubUrl, ...topics) {
+//     let hub = mercureHubs[hubUrl]
+//
+//     if (hub) {
+//       const oldHub = hub
+//
+//       hub = new MercureHub(hubUrl, ...hub.topics.filter(topic => !topics.includes(topic)))
+//       mercureHubs[hubUrl] = hub
+//
+//       oldHub.eventSource.close()
+//
+//       return hub
+//     }
+//   }
+// }
+//
+// const getHubUrlFromResponse = response => {
+//   return null
+//   if (response
+//     && response.headers
+//     && response.headers.get
+//     && response.headers.get('Link')
+//   ) {
+//     const matches = response.headers.get('Link')
+//       .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
+//     if (matches) {
+//       return matches[1]
+//     }
+//   }
+// }
 
-class MercureHub {
-  constructor(hubUrl, ...topics) {
-    this.topics = topics
-
-    const url = new URL(hubUrl)
-    topics.forEach(topic => {
-      url.searchParams.append('topic', topic)
-    })
-
-    this.eventSource = new EventSource(url.toString())
-    this.eventSource.onmessage = e => {
-      binding.data = e.data
-      binding.components.forEach(component => {
-        component.vm[component.key] = e.data
-      })
+const generateUrls = (targets) => {
+  if (targets) {
+    if (!Array.isArray(targets)) {
+      targets = [targets]
     }
-  }
-
-  static bind(hubUrl, ...topics) {
-    let hub = mercureHubs[hubUrl]
-    if (hub) {
-      const oldHub = hub
-
-      hub = new MercureHub(hubUrl, ...[...oldHub.topics, ...topics])
-      mercureHubs[hubUrl] = hub
-
-      oldHub.eventSource.close()
-
-      return hub
-    } else {
-      hub = new MercureHub(hubUrl, ...topics)
-      mercureHubs[hubUrl] = hub
-      return hub
-    }
-  }
-
-  static unbind(hubUrl, ...topics) {
-    let hub = mercureHubs[hubUrl]
-
-    if (hub) {
-      const oldHub = hub
-
-      hub = new MercureHub(hubUrl, ...hub.topics.filter(topic => !topics.includes(topic)))
-      mercureHubs[hubUrl] = hub
-
-      oldHub.eventSource.close()
-
-      return hub
-    }
-  }
-}
-
-
-
-const generateUrl = (target) => {
-  if (target) {
-    if (typeof target === 'object' && target.hasOwnProperty('@id')) {
-      return target['@id']
-    }
-    if (typeof target === 'string') {
-      return target
-    }
-  }
-}
-
-const getHubUrlFromResponse = response => {
-  return null
-  // if (response
-  //   && response.headers
-  //   && response.headers.get
-  //   && response.headers.get('Link')
-  // ) {
-  //   const matches = response.headers.get('Link')
-  //     .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
-  //   if (matches) {
-  //     return matches[1]
-  //   }
-  // }
-}
-
-class Binding {
-
-  constructor(dataUrl, vm, key, data = null, hubUrl = null) {
-    this.targets = [dataUrl]
-    this.related = []
-    this.data_ = data
-    this.update = data ? (new Date()).getTime() : 0
-    this.hubUrl = hubUrl
-    this.components = [
-      {
-        vm,
-        key
+    return targets.reduce((targets, target) => {
+      if (typeof target === 'object' && target.hasOwnProperty('@id')) {
+        targets.push(target['@id'])
+      } else if (typeof target === 'string') {
+        targets.push(target)
       }
-    ]
+      return targets
+    }, [])
+  }
+}
+
+class ApiCache {
+  constructor(url, binding = null, data = null, parent = null) {
+    this.uri = data ? data['@id'] : null
+    this.data_ = data
+    this.urls = [url]
+    this.update = (new Date()).getTime()
+    this.parents = parent ? [parent] : []
+    this.bindings = binding ? [binding] : []
+    this.timemout = null
   }
 
   get data() {
@@ -114,7 +110,8 @@ class Binding {
       return {
         ...this.data_,
         'hydra:member': this.data_['hydra:member'].map(member => {
-          return bindings.find(binding => binding.targets.includes(member['@id'])).data || member
+          const cache = caches.find(cache => cache.urls.includes(member['@id']))
+          return cache ? cache.data : member
         })
       }
     } else {
@@ -124,13 +121,181 @@ class Binding {
 
   set data(value) {
     this.data_ = value
+    if(value) {
+      this.uri = value['@id']
+    }
+
+    if (value['@type'] === 'hydra:Collection') {
+      value['hydra:member'].forEach(member => {
+
+        let cache = caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+        if (cache) {
+          cache.data = member
+          cache.parents = uniq([...cache.parents, this])
+        } else {
+          cache = new ApiCache(member['@id'], null, member, this)
+          caches.push(cache)
+        }
+      })
+    }
+
+    this.bindings.forEach(binding => {
+      binding.bind()
+    })
+    this.parents.forEach(parent => {
+      parent.bind()
+    })
+  }
+
+  getDelay() {
+    return 30 * 1000 - ((new Date()).getTime() - this.update)
+  }
+
+  addBinding(binding) {
+    if (this.timemout) {
+      clearTimeout(this.timemout)
+      this.timemout = null
+    }
+
+    this.bindings.push(binding)
+  }
+
+  removeBinding(binding) {
+    this.bindings = this.bindings.filter(b => b !== binding)
+
+    caches.forEach(cache => {
+      if (cache.parents.includes(this)) {
+        cache.removeBinding(null)
+      }
+    })
+
+    if (this.bindings.length === 0) {
+      const delay = this.getDelay()
+      if (delay <= 0) {
+        caches = caches.filter(cache => cache !== this)
+      } else {
+        this.timemout = setTimeout(() => {
+          caches = caches.filter(cache => cache !== this)
+        }, delay)
+      }
+    }
   }
 }
 
-export default {
-  install(Vue, {baseURL = '', cacheTime = 30} = {}) {
-    Vue.prototype.$api = api
+class ApiBinding {
 
+  constructor(targets, vm, key, array=false) {
+    this.vm = vm
+    this.key = key
+    this.targets = targets
+    this.caches = []
+    this.array = array
+    this.bindings = 0
+  }
+
+  startBinding() {
+    if (this.bindings === 0) {
+      if (this.vm.$options.hasOwnProperty('apiBinding')) {
+        this.vm.$options.apiBinding()
+      }
+    }
+    this.bindings++
+  }
+
+  stopBinding() {
+    this.bindings--
+    if (this.bindings === 0) {
+      if (this.vm.$options.hasOwnProperty('apiBound')) {
+        this.vm.$options.apiBound()
+      }
+    }
+  }
+
+  static create(targets, vm, key, array=false) {
+    const binding = new ApiBinding(targets, vm, key, array)
+    bindings.push(binding)
+    binding.bind()
+    return binding
+  }
+
+  update(targets, array=false) {
+    this.targets = targets
+    this.array = array
+
+    this.bind()
+  }
+
+  delete() {
+    this.caches.forEach(cache => {
+      cache.removeBinding(this)
+    })
+    this.caches = []
+  }
+
+  bind() {
+    const promises = this.targets.map(target => {
+
+      this.startBinding()
+
+      let cache = this.caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        return new Promise(resolve => {
+          resolve(cache.data)
+          this.stopBinding()
+        })
+      }
+
+      cache = caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        cache.addBinding(this)
+        this.caches.push(cache)
+        if (cache.getDelay() < 0) {
+          return new Promise(resolve => {
+            resolve(cache.data)
+            this.stopBinding()
+          })
+        }
+      }
+
+      if (!cache) {
+        cache = new ApiCache(target, this)
+        caches.push(cache)
+        this.caches.push(cache)
+      }
+      return fetch(target).then(response => {
+        if (response.ok) {
+          return response.json().then(data => {
+            cache.data = data
+            this.stopBinding()
+            return data
+          })
+        } else {
+          if (this.vm.$options.hasOwnProperty('apiBindError')) {
+            this.vm.$options.apiBindError(this.key, response)
+          }
+          this.stopBinding()
+        }
+      }).catch(error => {
+        if (this.vm.$options.hasOwnProperty('apiBindError')) {
+          this.vm.$options.apiBindError(this.key, error)
+        }
+        this.stopBinding()
+      })
+    })
+
+    Promise.all(promises).then(datas => {
+      if (this.array) {
+        this.vm[this.key] = datas
+      } else {
+        this.vm[this.key] = datas[0]
+      }
+    })
+  }
+
+}
+
+export default {
+  install(Vue) {
     Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods
 
     Vue.mixin({
@@ -155,88 +320,27 @@ export default {
     })
 
     Vue.prototype.$bindApi = function (key, target) {
-      const dataUrl = generateUrl(target)
-      if (!dataUrl) {
+      const dataUrls = generateUrls(target)
+      if (!dataUrls || dataUrls.length === 0) {
         this[key] = null
         return
       }
 
-      let binding = bindings.find(binding => binding.targets.includes(dataUrl))
-
-      if (!binding) {
-        binding = new Binding(dataUrl, this, key)
-        bindings.push(binding)
-      } else if (!binding.components.find(component => component.vm === this && component.key === key)) {
-        binding.components.push({
-          vm: this,
-          key
-        })
-      }
-
-      if (binding.update < (new Date()).getTime() - cacheTime * 1000) {
-
-        binding.update = (new Date()).getTime()
-
-        return fetch(baseURL + dataUrl, api.requestOptions).then(response => {
-
-          return response.json().then(data => {
-
-            const hubUrl = getHubUrlFromResponse(response)
-
-            if (data['@type'] === 'hydra:Collection') {
-              data['hydra:member'].forEach(member => {
-                let memberBinding = bindings.find(memberBinding => memberBinding.targets.includes(member['@id']))
-
-                if (memberBinding) {
-                  memberBinding.components.forEach(component => {
-                    component.vm[component.key] = member
-                  })
-                  memberBinding.data = member
-                } else {
-                  memberBinding = new Binding(member['@id'], this, key, member)
-                  bindings.push(memberBinding)
-                }
-
-                memberBinding.related.push(...binding.targets)
-              })
-              if (hubUrl) {
-                let topic = dataUrl.split('?')[0]
-                if (!/\/$/.test(topic)) {
-                  topic += '/'
-                }
-                MercureHub.bind(hubUrl, baseURL + topic + '{id}')
-              }
-            } else {
-              if (hubUrl) {
-                MercureHub.bind(hubUrl, baseURL + dataUrl)
-              }
-            }
-
-            binding.data = data
-            binding.components.forEach(component => {
-              component.vm[component.key] = data
-            })
-
-            return data
-          })
-        })
-
+      let binding = bindings.find(binding => binding.vm === this && binding.key === key)
+      if (binding) {
+        binding.update(dataUrls, Array.isArray(target))
       } else {
-
-        this[key] = binding.data
-
-        return Promise.resolve(binding.data)
+        ApiBinding.create(dataUrls, this, key, Array.isArray(target))
       }
+
     }
 
     Vue.prototype.$unbindApi = function (key) {
       bindings = bindings.reduce((bindings, binding) => {
-        binding.components = binding.components.filter(component => !(component.vm === this && component.key === key))
-        binding.related = binding.related.filter(related => bindings.find(binding => binding.targets.includes(related)))
-        if (binding.components.length > 0 || binding.related.length > 0) {
+        if (binding.vm === this && binding.key === key) {
+          binding.delete()
+        } else {
           bindings.push(binding)
-        } else if (binding.hubUrl) {
-          MercureHub.unbind(binding.hubUrl, ...binding.targets)
         }
         return bindings
       }, [])
