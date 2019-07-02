@@ -1,10 +1,10 @@
-export default function (entity, {computed=null, expose=false, collection=false, suffix='_', prefix=''} = {}) {
+export default function (entity, {computed=null, expose=false, collection=false, suffix='_', prefix='', array = false} = {}) {
 
   const entity_ = prefix + entity + suffix
   const mixin = {
     data() {
       return {
-        [entity_]: null
+        [entity_]: array ? [] : null
       }
     }
   }
