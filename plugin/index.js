@@ -249,7 +249,7 @@ class ApiBinding {
       if (cache) {
         cache.addBinding(this)
         this.caches.push(cache)
-        if (cache.getDelay() < 0) {
+        if (cache.getDelay() > 0) {
           return new Promise(resolve => {
             resolve(cache.data)
             this.stopBinding()
