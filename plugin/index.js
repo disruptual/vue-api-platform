@@ -285,7 +285,7 @@ class ApiBinding {
 
     Promise.all(promises).then(datas => {
       if (this.array) {
-        this.vm[this.key] = datas
+        this.vm[this.key] = datas.filter(data => data)
       } else {
         this.vm[this.key] = datas[0]
       }
