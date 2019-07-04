@@ -322,7 +322,7 @@ export default {
     Vue.prototype.$bindApi = function (key, target) {
       const dataUrls = generateUrls(target)
       if (!dataUrls || dataUrls.length === 0) {
-        this[key] = null
+        this[key] = Array.isArray(target) ? [] : null
         return
       }
 
