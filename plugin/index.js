@@ -244,7 +244,7 @@ class ApiBinding {
 
       if (!refresh) {
         let cache = this.caches.find(cache => cache.urls.includes(target))
-        if (cache) {
+        if (cache && cache.getDelay() > 0) {
           return new Promise(resolve => {
             resolve(cache.data)
             this.stopBinding()
@@ -252,7 +252,7 @@ class ApiBinding {
         }
 
         cache = caches.find(cache => cache.urls.includes(target))
-        if (cache) {
+        if (cache && cache.getDelay() > 0) {
           cache.addBinding(this)
           this.caches.push(cache)
           if (cache.getDelay() > 0) {
@@ -263,11 +263,8 @@ class ApiBinding {
           }
         }
       } else {
-        cache = new ApiCache(target, this)
         caches = caches.filter(cache => cache.urls.includes(target));
         this.caches = this.caches.filter(cache => cache.urls.includes(target));
-        caches.push(cache)
-        this.caches.push(cache)
       }
 
       if (!cache) {
