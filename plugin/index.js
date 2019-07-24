@@ -139,11 +139,15 @@ class ApiCache {
       })
     }
 
+    this.refreshBindings()
+  }
+
+  refreshBindings() {
     this.bindings.forEach(binding => {
       binding.bind()
     })
     this.parents.forEach(parent => {
-      parent.bind()
+      parent.refreshBindings()
     })
   }
 
