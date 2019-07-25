@@ -236,28 +236,31 @@ class ApiBinding {
     this.caches = []
   }
 
-  bind() {
+  bind(refresh=false) {
     const promises = this.targets.map(target => {
-
       this.startBinding()
 
-      let cache = this.caches.find(cache => cache.urls.includes(target))
-      if (cache) {
+      let cache = null
+
+      cache = this.caches.find(cache => cache.urls.includes(target))
+      if (!refresh && cache && cache.getDelay() > 0) {
         return new Promise(resolve => {
           resolve(cache.data)
           this.stopBinding()
         })
       }
 
+      if (!cache) {
       cache = caches.find(cache => cache.urls.includes(target))
-      if (cache) {
-        cache.addBinding(this)
-        this.caches.push(cache)
-        if (cache.getDelay() > 0) {
-          return new Promise(resolve => {
-            resolve(cache.data)
-            this.stopBinding()
-          })
+        if (cache) {
+          cache.addBinding(this)
+          this.caches.push(cache)
+          if (!refresh && cache.getDelay() > 0) {
+            return new Promise(resolve => {
+              resolve(cache.data)
+              this.stopBinding()
+            })
+          }
         }
       }
 
@@ -337,6 +340,13 @@ export default {
         ApiBinding.create(dataUrls, this, key, Array.isArray(target))
       }
 
+    }
+
+    Vue.prototype.$refreshApi = function (key) {
+      const binding = bindings.find(binding => binding.vm === this && binding.key === key)
+      if (binding) {
+        binding.bind(true);
+      }
     }
 
     Vue.prototype.$unbindApi = function (key) {
