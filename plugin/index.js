@@ -242,29 +242,26 @@ class ApiBinding {
 
       let cache = null
 
-      if (!refresh) {
-        let cache = this.caches.find(cache => cache.urls.includes(target))
-        if (cache && cache.getDelay() > 0) {
-          return new Promise(resolve => {
-            resolve(cache.data)
-            this.stopBinding()
-          })
-        }
+      cache = this.caches.find(cache => cache.urls.includes(target))
+      if (!refresh && cache && cache.getDelay() > 0) {
+        return new Promise(resolve => {
+          resolve(cache.data)
+          this.stopBinding()
+        })
+      }
 
-        cache = caches.find(cache => cache.urls.includes(target))
-        if (cache && cache.getDelay() > 0) {
+      if (!cache) {
+      cache = caches.find(cache => cache.urls.includes(target))
+        if (cache) {
           cache.addBinding(this)
           this.caches.push(cache)
-          if (cache.getDelay() > 0) {
+          if (!refresh && cache.getDelay() > 0) {
             return new Promise(resolve => {
               resolve(cache.data)
               this.stopBinding()
             })
           }
         }
-      } else {
-        caches = caches.filter(cache => cache.urls.includes(target));
-        this.caches = this.caches.filter(cache => cache.urls.includes(target));
       }
 
       if (!cache) {
