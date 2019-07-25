@@ -121,6 +121,8 @@ class ApiCache {
 
   set data(value) {
     this.data_ = value
+    this.update = (new Date()).getTime()
+
     if(value) {
       this.uri = value['@id']
     }
@@ -251,7 +253,7 @@ class ApiBinding {
       }
 
       if (!cache) {
-      cache = caches.find(cache => cache.urls.includes(target))
+        cache = caches.find(cache => cache.urls.includes(target))
         if (cache) {
           cache.addBinding(this)
           this.caches.push(cache)
