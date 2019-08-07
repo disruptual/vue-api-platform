@@ -32,6 +32,15 @@ export default {
         return this.user
       }
     }
+  },
+  apiBinding() {
+    // The datas are loading
+  },
+  apiBound() {
+    // The datas are loaded
+  },
+  apiBindError(key, error) {
+    // An error occurs during the binding
   }
 }
 ```

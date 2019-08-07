@@ -97,7 +97,7 @@ class ApiCache {
     this.update = (new Date()).getTime()
     this.parents = parent ? [parent] : []
     this.bindings = binding ? [binding] : []
-    this.timemout = null
+    this.deleteTimeout = null
   }
 
   get data() {
@@ -146,7 +146,7 @@ class ApiCache {
 
   refreshBindings() {
     this.bindings.forEach(binding => {
-      binding.bind()
+      binding.reload()
     })
     this.parents.forEach(parent => {
       parent.refreshBindings()
@@ -158,9 +158,9 @@ class ApiCache {
   }
 
   addBinding(binding) {
-    if (this.timemout) {
-      clearTimeout(this.timemout)
-      this.timemout = null
+    if (this.deleteTimeout) {
+      clearTimeout(this.deleteTimeout)
+      this.deleteTimeout = null
     }
 
     this.bindings.push(binding)
@@ -180,7 +180,7 @@ class ApiCache {
       if (delay <= 0) {
         caches = caches.filter(cache => cache !== this)
       } else {
-        this.timemout = setTimeout(() => {
+        this.deleteTimeout = setTimeout(() => {
           caches = caches.filter(cache => cache !== this)
         }, delay)
       }
@@ -196,25 +196,27 @@ class ApiBinding {
     this.targets = targets
     this.caches = []
     this.array = array
-    this.bindings = 0
+    this.reloadTimeout = null
   }
 
   startBinding() {
-    if (this.bindings === 0) {
-      if (this.vm.$options.hasOwnProperty('apiBinding')) {
-        this.vm.$options.apiBinding()
+    if (this.vm.$options._apiBindings === 0) {
+      if (this.vm.$options.apiBinding) {
+        this.vm.$options.apiBinding.bind(this.vm)()
       }
     }
-    this.bindings++
+    this.vm.$options._apiBindings++
   }
 
   stopBinding() {
-    this.bindings--
-    if (this.bindings === 0) {
-      if (this.vm.$options.hasOwnProperty('apiBound')) {
-        this.vm.$options.apiBound()
+    setTimeout(() => {
+      this.vm.$options._apiBindings--
+      if (this.vm.$options._apiBindings === 0) {
+        if (this.vm.$options.apiBound) {
+          this.vm.$options.apiBound.bind(this.vm)()
+        }
       }
-    }
+    }, 50)
   }
 
   static create(targets, vm, key, array=false) {
@@ -271,6 +273,7 @@ class ApiBinding {
         caches.push(cache)
         this.caches.push(cache)
       }
+      cache.update = (new Date()).getTime()
       return fetch(target).then(response => {
         if (response.ok) {
           return response.json().then(data => {
@@ -279,14 +282,14 @@ class ApiBinding {
             return data
           })
         } else {
-          if (this.vm.$options.hasOwnProperty('apiBindError')) {
-            this.vm.$options.apiBindError(this.key, response)
+          if (this.vm.$options.apiBindError) {
+            this.vm.$options.apiBindError.bind(this.vm)(this.key, response)
           }
           this.stopBinding()
         }
       }).catch(error => {
-        if (this.vm.$options.hasOwnProperty('apiBindError')) {
-          this.vm.$options.apiBindError(this.key, error)
+        if (this.vm.$options.apiBindError) {
+          this.vm.$options.apiBindError.bind(this.vm)(this.key, error)
         }
         this.stopBinding()
       })
@@ -299,6 +302,16 @@ class ApiBinding {
         this.vm[this.key] = datas[0]
       }
     })
+  }
+
+  reload() {
+    if (this.reloadTimeout) {
+      clearTimeout(this.reloadTimeout)
+    }
+    this.reloadTimeout = setTimeout(() => {
+      this.reloadTimeout = null
+      this.bind()
+    }, 50)
   }
 
 }
@@ -325,7 +338,8 @@ export default {
             this.$unbindApi(key)
           })
         }
-      }
+      },
+      _apiBindings: 0
     })
 
     Vue.prototype.$bindApi = function (key, target) {
