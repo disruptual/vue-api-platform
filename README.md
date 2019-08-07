@@ -12,9 +12,7 @@ Use in your project
 ```vuejs
 import ApiPlugin from 'vue-api-platform/plugin'
 
-Vue.use(ApiPlugin, {
-  baseURL: process.env.VUE_APP_API
-})
+Vue.use(ApiPlugin)
 ```
 
 Use in a component
@@ -58,7 +56,6 @@ export default {
   },
   props: {
     user: {
-      type: [Object, String],
       required: true
     }
   },
@@ -72,6 +69,12 @@ export default {
 }
 ```
 
+The mixin have got many parameters:
+
+- expose (false) : create a mixin named like the property passed (only works with computed)
+- collection (false) : set the data is an URI of a collection, so the return datas are in an array
+- array (false) : set that the query is an array, so the return datas are in an array
+
 With parameters
 
 ```vuejs
@@ -84,8 +87,11 @@ export default {
     }
   },
   mixins: [
-    ApiMixin('item', function () {
-      return this.itemUrl
+    ApiMixin('item', {
+      computed () {
+        return this.itemUrl
+      },
+      expose: true
     })
   ]
 }
@@ -104,6 +110,11 @@ export default {
         return this.itemUrl
       }
     }
+  },
+  computed: {
+    item() {
+      return this.item_
+    }  
   }
 }
 ```
