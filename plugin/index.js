@@ -242,7 +242,6 @@ class ApiBinding {
 
   bind(refresh=false) {
     const promises = this.targets.map(target => {
-      this.startBinding()
 
       let cache = null
 
@@ -250,7 +249,6 @@ class ApiBinding {
       if (!refresh && cache && cache.getDelay() > 0) {
         return new Promise(resolve => {
           resolve(cache.data)
-          this.stopBinding()
         })
       }
 
@@ -262,7 +260,6 @@ class ApiBinding {
           if (!refresh && cache.getDelay() > 0) {
             return new Promise(resolve => {
               resolve(cache.data)
-              this.stopBinding()
             })
           }
         }
@@ -273,6 +270,7 @@ class ApiBinding {
         caches.push(cache)
         this.caches.push(cache)
       }
+      this.startBinding()
       cache.update = (new Date()).getTime()
       return fetch(target).then(response => {
         if (response.ok) {
