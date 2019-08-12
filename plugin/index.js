@@ -197,25 +197,21 @@ class ApiBinding {
     this.caches = []
     this.array = array
     this.reloadTimeout = null
+    this.stopBindingTimeout = null
+    this.isLoading = true
+    this.vm.$data.$apiBindings = [...this.vm.$data.$apiBindings, this]
   }
 
   startBinding() {
-    if (this.vm.$options._apiBindings === 0) {
-      if (this.vm.$options.apiBinding) {
-        this.vm.$options.apiBinding.bind(this.vm)()
-      }
-    }
-    this.vm.$options._apiBindings++
+    this.isLoading = true
   }
 
   stopBinding() {
-    setTimeout(() => {
-      this.vm.$options._apiBindings--
-      if (this.vm.$options._apiBindings === 0) {
-        if (this.vm.$options.apiBound) {
-          this.vm.$options.apiBound.bind(this.vm)()
-        }
-      }
+    if (this.stopBindingTimeout) {
+      clearTimeout(this.stopBindingTimeout)
+    }
+    this.stopBindingTimeout = setTimeout(() => {
+      this.isLoading = false
     }, 50)
   }
 
@@ -319,6 +315,11 @@ export default {
     Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods
 
     Vue.mixin({
+      data() {
+        return {
+          $apiBindings: []
+        }
+      },
       created() {
         const apiOptions = this.$options.api
         if (apiOptions) {
@@ -336,8 +337,7 @@ export default {
             this.$unbindApi(key)
           })
         }
-      },
-      _apiBindings: 0
+      }
     })
 
     Vue.prototype.$bindApi = function (key, target) {
