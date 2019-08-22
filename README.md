@@ -75,6 +75,7 @@ The mixin have got many parameters:
 - expose (false) : create a mixin named like the property passed (only works with computed)
 - collection (false) : set the data is an URI of a collection, so the return datas are in an array
 - array (false) : set that the query is an array, so the return datas are in an array
+- required (true) : set the props required or not
 
 With parameters
 

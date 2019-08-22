@@ -1,4 +1,4 @@
-export default function (entity, {computed=null, expose=false, collection=false, suffix='_', prefix='', array = false} = {}) {
+export default function (entity, {computed=null, expose=false, collection=false, suffix='_', prefix='', array = false, required = true} = {}) {
 
   const entity_ = prefix + entity + suffix
   const mixin = {
@@ -32,7 +32,7 @@ export default function (entity, {computed=null, expose=false, collection=false,
   } else {
     mixin.props = {
       [entity]: {
-        required: true
+        required
       }
     }
     mixin.api = {
