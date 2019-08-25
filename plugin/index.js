@@ -1,7 +1,9 @@
 import uniq from 'lodash.uniq'
 
-let bindings = []
-let caches = []
+const datas = {
+  bindings: [],
+  caches: []
+}
 
 //
 // let mercureHubs = {}
@@ -110,7 +112,7 @@ class ApiCache {
       return {
         ...this.data_,
         'hydra:member': this.data_['hydra:member'].map(member => {
-          const cache = caches.find(cache => cache.urls.includes(member['@id']))
+          const cache = datas.caches.find(cache => cache.urls.includes(member['@id']))
           return cache ? cache.data : member
         })
       }
@@ -130,13 +132,13 @@ class ApiCache {
     if (value['@type'] === 'hydra:Collection') {
       value['hydra:member'].forEach(member => {
 
-        let cache = caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+        let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
         if (cache) {
           cache.data = member
           cache.parents = uniq([...cache.parents, this])
         } else {
           cache = new ApiCache(member['@id'], null, member, this)
-          caches.push(cache)
+          datas.caches.push(cache)
         }
       })
     }
@@ -169,7 +171,7 @@ class ApiCache {
   removeBinding(binding) {
     this.bindings = this.bindings.filter(b => b !== binding)
 
-    caches.forEach(cache => {
+    datas.caches.forEach(cache => {
       if (cache.parents.includes(this)) {
         cache.removeBinding(null)
       }
@@ -178,10 +180,10 @@ class ApiCache {
     if (this.bindings.length === 0) {
       const delay = this.getDelay()
       if (delay <= 0) {
-        caches = caches.filter(cache => cache !== this)
+        datas.caches = datas.caches.filter(cache => cache !== this)
       } else {
         this.deleteTimeout = setTimeout(() => {
-          caches = caches.filter(cache => cache !== this)
+          datas.caches = datas.caches.filter(cache => cache !== this)
         }, delay)
       }
     }
@@ -198,11 +200,14 @@ class ApiBinding {
     this.array = array
     this.reloadTimeout = null
     this.stopBindingTimeout = null
-    this.isLoading = true
+    this.isLoading = false
     this.vm.$data.$apiBindings = [...this.vm.$data.$apiBindings, this]
   }
 
   startBinding() {
+    if (this.stopBindingTimeout) {
+      clearTimeout(this.stopBindingTimeout)
+    }
     this.isLoading = true
   }
 
@@ -217,7 +222,7 @@ class ApiBinding {
 
   static create(targets, vm, key, array=false) {
     const binding = new ApiBinding(targets, vm, key, array)
-    bindings.push(binding)
+    datas.bindings.push(binding)
     binding.bind()
     return binding
   }
@@ -249,7 +254,7 @@ class ApiBinding {
       }
 
       if (!cache) {
-        cache = caches.find(cache => cache.urls.includes(target))
+        cache = datas.caches.find(cache => cache.urls.includes(target))
         if (cache) {
           cache.addBinding(this)
           this.caches.push(cache)
@@ -263,7 +268,7 @@ class ApiBinding {
 
       if (!cache) {
         cache = new ApiCache(target, this)
-        caches.push(cache)
+        datas.caches.push(cache)
         this.caches.push(cache)
       }
       this.startBinding()
@@ -312,6 +317,9 @@ class ApiBinding {
 
 export default {
   install(Vue) {
+    if (window) {
+      window.ApiDatas = datas
+    }
     Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods
 
     Vue.mixin({
@@ -347,7 +355,7 @@ export default {
         return
       }
 
-      let binding = bindings.find(binding => binding.vm === this && binding.key === key)
+      let binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
       if (binding) {
         binding.update(dataUrls, Array.isArray(target))
       } else {
@@ -357,14 +365,14 @@ export default {
     }
 
     Vue.prototype.$refreshApi = function (key) {
-      const binding = bindings.find(binding => binding.vm === this && binding.key === key)
+      const binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
       if (binding) {
         binding.bind(true);
       }
     }
 
     Vue.prototype.$unbindApi = function (key) {
-      bindings = bindings.reduce((bindings, binding) => {
+      datas.bindings = datas.bindings.reduce((bindings, binding) => {
         if (binding.vm === this && binding.key === key) {
           binding.delete()
         } else {
