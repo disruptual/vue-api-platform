@@ -93,18 +93,21 @@ const generateUrls = (targets) => {
 
 class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
-    this.uri = data ? data['@id'] : null
+    this.uri = data ? data['@id'] : url
     this.data_ = null
     this.urls = [url]
     this.update = (new Date()).getTime()
     this.parents = parent ? [parent] : []
     this.bindings = binding ? [binding] : []
     this.deleteTimeout = null
-    
-    if (data) this.data = data
+
+    if (data && data instanceof Object) this.data = data
   }
 
   get data() {
+    if (this.getDelay() < 0) {
+      this.load()
+    }
     if (
       this.data_ &&
       typeof this.data_ === 'object' &&
@@ -146,6 +149,32 @@ class ApiCache {
     }
 
     this.refreshBindings()
+  }
+
+  load() {
+    this.update = (new Date()).getTime()
+    return fetch(this.uri).then(response => {
+      if (response.ok) {
+        return response.json().then(data => {
+          this.data = data
+          return data
+        })
+      } else {
+        this.propagateError(this.key, response)
+        throw response
+      }
+    }).catch(error => {
+      this.propagateError(this.key, response)
+      throw error
+    })
+  }
+
+  propagateError(key, error) {
+    this.bindings.forEach(binding => {
+      if (binding.vm.$options.apiBindError) {
+        binding.vm.$options.apiBindError.bind(binding.vm)(binding.key, error)
+      }
+    })
   }
 
   refreshBindings() {
@@ -243,55 +272,29 @@ class ApiBinding {
     this.caches = []
   }
 
-  bind(refresh=false) {
+  bind() {
     const promises = this.targets.map(target => {
 
-      let cache = null
-
-      cache = this.caches.find(cache => cache.urls.includes(target))
-      if (!refresh && cache && cache.getDelay() > 0) {
-        return new Promise(resolve => {
-          resolve(cache.data)
-        })
+      let cache = this.caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        return Promise.resolve(cache.data)
       }
 
-      if (!cache) {
-        cache = datas.caches.find(cache => cache.urls.includes(target))
-        if (cache) {
-          cache.addBinding(this)
-          this.caches.push(cache)
-          if (!refresh && cache.getDelay() > 0) {
-            return new Promise(resolve => {
-              resolve(cache.data)
-            })
-          }
-        }
-      }
-
-      if (!cache) {
-        cache = new ApiCache(target, this)
-        datas.caches.push(cache)
+      cache = datas.caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        cache.addBinding(this)
         this.caches.push(cache)
+        return Promise.resolve(cache.data)
       }
+
+      cache = new ApiCache(target, this)
+      datas.caches.push(cache)
+      this.caches.push(cache)
+
       this.startBinding()
-      cache.update = (new Date()).getTime()
-      return fetch(target).then(response => {
-        if (response.ok) {
-          return response.json().then(data => {
-            cache.data = data
-            this.stopBinding()
-            return data
-          })
-        } else {
-          if (this.vm.$options.apiBindError) {
-            this.vm.$options.apiBindError.bind(this.vm)(this.key, response)
-          }
-          this.stopBinding()
-        }
-      }).catch(error => {
-        if (this.vm.$options.apiBindError) {
-          this.vm.$options.apiBindError.bind(this.vm)(this.key, error)
-        }
+      return cache.load().then(() => {
+        this.stopBinding()
+      }).catch(() => {
         this.stopBinding()
       })
     })
@@ -369,7 +372,14 @@ export default {
     Vue.prototype.$refreshApi = function (key) {
       const binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
       if (binding) {
-        binding.bind(true);
+        binding.caches.forEach(cache => {
+          cache.load()
+        })
+      }
+
+      const cache = datas.caches.find(cache => cache.urls.includes(key))
+      if (cache) {
+        cache.load()
       }
     }
 
