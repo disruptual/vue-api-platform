@@ -94,12 +94,14 @@ const generateUrls = (targets) => {
 class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
     this.uri = data ? data['@id'] : null
-    this.data_ = data
+    this.data_ = null
     this.urls = [url]
     this.update = (new Date()).getTime()
     this.parents = parent ? [parent] : []
     this.bindings = binding ? [binding] : []
     this.deleteTimeout = null
+    
+    if (data) this.data = data
   }
 
   get data() {
@@ -127,20 +129,20 @@ class ApiCache {
 
     if(value) {
       this.uri = value['@id']
-    }
 
-    if (value['@type'] === 'hydra:Collection') {
-      value['hydra:member'].forEach(member => {
+      if (value['@type'] === 'hydra:Collection') {
+        value['hydra:member'].forEach(member => {
 
-        let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
-        if (cache) {
-          cache.data = member
-          cache.parents = uniq([...cache.parents, this])
-        } else {
-          cache = new ApiCache(member['@id'], null, member, this)
-          datas.caches.push(cache)
-        }
-      })
+          let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+          if (cache) {
+            cache.data = member
+            cache.parents = uniq([...cache.parents, this])
+          } else {
+            cache = new ApiCache(member['@id'], null, member, this)
+            datas.caches.push(cache)
+          }
+        })
+      }
     }
 
     this.refreshBindings()
