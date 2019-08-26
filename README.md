@@ -1,19 +1,19 @@
 # vue-api-platform
 
-##How to install:
+## How to install:
 
 ```shell
 npm i -s vue-api-platform
 ```
 
-##Use in your project 
+## Use in your project 
 ```js
 import ApiPlugin from 'vue-api-platform/plugin'
 
 Vue.use(ApiPlugin)
 ```
 
-##Use in a component
+## Use in a component
 ```js
 export default {
   data() {
@@ -25,10 +25,8 @@ export default {
     'user'
   ],
   api: {
-    user_: {
-      computed() {
-        return this.user
-      }
+    user_() {
+      return this.user
     }
   },
   apiBindError(key, error) {
@@ -37,7 +35,7 @@ export default {
 }
 ```
 
-##Use with the mixin with props
+## Use with the mixin with props
 
 ```js
 import ApiMixin from 'vue-api-platform/mixin'
@@ -61,10 +59,8 @@ export default {
     }
   },
   api: {
-    user_: {
-      computed() {
-        return this.user
-      }
+    user_() {
+      return this.user
     }
   }
 }
@@ -107,10 +103,8 @@ export default {
     }
   },
   api: {
-    item_: {
-      computed () {
-        return this.itemUrl
-      }
+    item_() {
+      return this.itemUrl
     }
   },
   computed: {
@@ -121,9 +115,9 @@ export default {
 }
 ```
 
-##Other utils mixin
+## Other utils mixin
 
-###isLoading
+### isLoading
 
 Create a computed `apiIsLoading` which return a boolean if the there's a resource which is actually downloading 
 
@@ -137,7 +131,7 @@ export default {
 }
 ```
 
-###loadingRate
+### loadingRate
 
 Create a computed `apiLoadingRate` which return a percent that correspond to the number of variable which are actually downloading (0 => nothing downloaded, 100 => everything is downloaded)  
 
