@@ -35,6 +35,41 @@ export default {
 }
 ```
 
+## Functions
+
+- $cacheDataApi
+set yourself ApiPlatform datas
+
+```js
+fetch('/entities?page=1').then(response => {
+  if (response.ok) return response.json()
+  throw reponse
+}).then(datas => {
+  this.$cacheDataApi(datas)
+})
+```
+
+- $refreshApi
+force refresh of a key or an URI
+
+```js
+import ApiMixin from 'vue-api-platform/mixin'
+
+export default {
+  mixins: [
+    ApiMixin('user')
+  ],
+  methods: {
+    refreshByKey() {
+      this.$refreshApi('user_')
+    },
+    refreshByURI() {
+      this.$refreshApi(this.user_['@id'])
+    }
+  }
+}
+```
+
 ## Use with the mixin with props
 
 ```js

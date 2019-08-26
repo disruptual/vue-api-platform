@@ -373,6 +373,17 @@ export default {
       }
     }
 
+    Vue.prototype.$cacheDataApi = function (data) {
+      if (data['@id']) {
+        let cache = datas.caches.find(cache => cache.urls.includes(data['@id']))
+        if (!cache) {
+          cache = new ApiCache(data['@id'])
+          datas.caches.push(cache)
+        }
+        cache.data = data
+      }
+    }
+
     Vue.prototype.$unbindApi = function (key) {
       datas.bindings = datas.bindings.reduce((bindings, binding) => {
         if (binding.vm === this && binding.key === key) {
