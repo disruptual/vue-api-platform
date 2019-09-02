@@ -2,7 +2,8 @@ import uniq from 'lodash.uniq'
 
 const datas = {
   bindings: [],
-  caches: []
+  caches: [],
+  eventSource: null
 }
 
 //
@@ -93,16 +94,21 @@ const generateUrls = (targets) => {
 
 class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
-    this.uri = data ? data['@id'] : null
-    this.data_ = data
+    this.uri = data ? data['@id'] : url
+    this.data_ = null
     this.urls = [url]
     this.update = (new Date()).getTime()
     this.parents = parent ? [parent] : []
     this.bindings = binding ? [binding] : []
     this.deleteTimeout = null
+
+    if (data && data instanceof Object) this.data = data
   }
 
   get data() {
+    if (this.getDelay() < 0) {
+      this.load()
+    }
     if (
       this.data_ &&
       typeof this.data_ === 'object' &&
@@ -127,23 +133,67 @@ class ApiCache {
 
     if(value) {
       this.uri = value['@id']
-    }
 
-    if (value['@type'] === 'hydra:Collection') {
-      value['hydra:member'].forEach(member => {
+      if (value['@type'] === 'hydra:Collection') {
+        value['hydra:member'].forEach(member => {
 
-        let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
-        if (cache) {
-          cache.data = member
-          cache.parents = uniq([...cache.parents, this])
-        } else {
-          cache = new ApiCache(member['@id'], null, member, this)
-          datas.caches.push(cache)
-        }
-      })
+          let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+          if (cache) {
+            cache.data = member
+            cache.parents = uniq([...cache.parents, this])
+          } else {
+            cache = new ApiCache(member['@id'], null, member, this)
+            datas.caches.push(cache)
+          }
+        })
+      }
     }
 
     this.refreshBindings()
+  }
+
+  load() {
+    this.update = (new Date()).getTime()
+    return fetch(this.uri).then(response => {
+      if (response.ok) {
+
+        // try {
+        //   if (!datas.eventSource && response.headers.has('Link')) {
+        //     const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
+        //     if (matches) {
+        //       const hubUrl = matches[1]
+        //       const url = new URL('https://kiabi.mercure.disruptual.com')
+        //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
+        //       datas.eventSource.onmessage = e => {
+        //         console.log('mercure', e)
+        //       }
+        //       console.log('eventSourceCredentials', datas.eventSource.withCredentials)
+        //     }
+        //   }
+        // } catch (e) {
+        //   console.error(e)
+        // }
+
+        return response.json().then(data => {
+          this.data = data
+          return data
+        })
+      } else {
+        this.propagateError(this.key, response)
+        throw response
+      }
+    }).catch(error => {
+      this.propagateError(this.key, response)
+      throw error
+    })
+  }
+
+  propagateError(key, error) {
+    this.bindings.forEach(binding => {
+      if (binding.vm.$options.apiBindError) {
+        binding.vm.$options.apiBindError.bind(binding.vm)(binding.key, error)
+      }
+    })
   }
 
   refreshBindings() {
@@ -241,55 +291,29 @@ class ApiBinding {
     this.caches = []
   }
 
-  bind(refresh=false) {
+  bind() {
     const promises = this.targets.map(target => {
 
-      let cache = null
-
-      cache = this.caches.find(cache => cache.urls.includes(target))
-      if (!refresh && cache && cache.getDelay() > 0) {
-        return new Promise(resolve => {
-          resolve(cache.data)
-        })
+      let cache = this.caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        return Promise.resolve(cache.data)
       }
 
-      if (!cache) {
-        cache = datas.caches.find(cache => cache.urls.includes(target))
-        if (cache) {
-          cache.addBinding(this)
-          this.caches.push(cache)
-          if (!refresh && cache.getDelay() > 0) {
-            return new Promise(resolve => {
-              resolve(cache.data)
-            })
-          }
-        }
-      }
-
-      if (!cache) {
-        cache = new ApiCache(target, this)
-        datas.caches.push(cache)
+      cache = datas.caches.find(cache => cache.urls.includes(target))
+      if (cache) {
+        cache.addBinding(this)
         this.caches.push(cache)
+        return Promise.resolve(cache.data)
       }
+
+      cache = new ApiCache(target, this)
+      datas.caches.push(cache)
+      this.caches.push(cache)
+
       this.startBinding()
-      cache.update = (new Date()).getTime()
-      return fetch(target).then(response => {
-        if (response.ok) {
-          return response.json().then(data => {
-            cache.data = data
-            this.stopBinding()
-            return data
-          })
-        } else {
-          if (this.vm.$options.apiBindError) {
-            this.vm.$options.apiBindError.bind(this.vm)(this.key, response)
-          }
-          this.stopBinding()
-        }
-      }).catch(error => {
-        if (this.vm.$options.apiBindError) {
-          this.vm.$options.apiBindError.bind(this.vm)(this.key, error)
-        }
+      return cache.load().then(() => {
+        this.stopBinding()
+      }).catch(() => {
         this.stopBinding()
       })
     })
@@ -310,7 +334,7 @@ class ApiBinding {
     this.reloadTimeout = setTimeout(() => {
       this.reloadTimeout = null
       this.bind()
-    }, 50)
+    }, 200)
   }
 
 }
@@ -367,7 +391,25 @@ export default {
     Vue.prototype.$refreshApi = function (key) {
       const binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
       if (binding) {
-        binding.bind(true);
+        binding.caches.forEach(cache => {
+          cache.load()
+        })
+      }
+
+      const cache = datas.caches.find(cache => cache.urls.includes(key))
+      if (cache) {
+        cache.load()
+      }
+    }
+
+    Vue.prototype.$cacheDataApi = function (data) {
+      if (data['@id']) {
+        let cache = datas.caches.find(cache => cache.urls.includes(data['@id']))
+        if (!cache) {
+          cache = new ApiCache(data['@id'])
+          datas.caches.push(cache)
+        }
+        cache.data = data
       }
     }
 
