@@ -2,7 +2,8 @@ import uniq from 'lodash.uniq'
 
 const datas = {
   bindings: [],
-  caches: []
+  caches: [],
+  eventSource: null
 }
 
 //
@@ -155,6 +156,24 @@ class ApiCache {
     this.update = (new Date()).getTime()
     return fetch(this.uri).then(response => {
       if (response.ok) {
+
+        // try {
+        //   if (!datas.eventSource && response.headers.has('Link')) {
+        //     const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
+        //     if (matches) {
+        //       const hubUrl = matches[1]
+        //       const url = new URL('https://kiabi.mercure.disruptual.com')
+        //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
+        //       datas.eventSource.onmessage = e => {
+        //         console.log('mercure', e)
+        //       }
+        //       console.log('eventSourceCredentials', datas.eventSource.withCredentials)
+        //     }
+        //   }
+        // } catch (e) {
+        //   console.error(e)
+        // }
+
         return response.json().then(data => {
           this.data = data
           return data
@@ -315,7 +334,7 @@ class ApiBinding {
     this.reloadTimeout = setTimeout(() => {
       this.reloadTimeout = null
       this.bind()
-    }, 50)
+    }, 200)
   }
 
 }
