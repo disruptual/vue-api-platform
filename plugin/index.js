@@ -1,4 +1,5 @@
 import uniq from 'lodash.uniq'
+import fetchIntercept from '@neorel/fetch-intercept'
 
 const datas = {
   bindings: [],
@@ -162,7 +163,7 @@ class ApiCache {
         //     const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
         //     if (matches) {
         //       const hubUrl = matches[1]
-        //       const url = new URL('https://kiabi.mercure.disruptual.com')
+        //       const url = new URL(hubUrl)
         //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
         //       datas.eventSource.onmessage = e => {
         //         console.log('mercure', e)
@@ -339,11 +340,40 @@ class ApiBinding {
 
 }
 
+const cacheDatas = function (data) {
+  if (data['@id']) {
+    let cache = datas.caches.find(cache => cache.urls.includes(data['@id']))
+    if (!cache) {
+      cache = new ApiCache(data['@id'])
+      datas.caches.push(cache)
+    }
+    cache.data = data
+  }
+}
+
 export default {
   install(Vue) {
     if (window) {
       window.ApiDatas = datas
     }
+
+    fetchIntercept.register({
+      request: (url, config) => [url, config],
+      requestError: (error) => Promise.reject(error),
+      response: (response) => {
+        if (response.ok) {
+          const request = response.request
+          if (request.method === 'PUT' || request.method === 'POST' || request.method === 'PATCH') {
+            response.json().then(datas => {
+              cacheDatas(datas)
+            })
+          }
+        }
+        return response
+      },
+      responseError: (error) => Promise.reject(error)
+    });
+
     Vue.config.optionMergeStrategies.api = Vue.config.optionMergeStrategies.methods
 
     Vue.mixin({
@@ -402,16 +432,7 @@ export default {
       }
     }
 
-    Vue.prototype.$cacheDataApi = function (data) {
-      if (data['@id']) {
-        let cache = datas.caches.find(cache => cache.urls.includes(data['@id']))
-        if (!cache) {
-          cache = new ApiCache(data['@id'])
-          datas.caches.push(cache)
-        }
-        cache.data = data
-      }
-    }
+    Vue.prototype.$cacheDataApi = cacheDatas
 
     Vue.prototype.$unbindApi = function (key) {
       datas.bindings = datas.bindings.reduce((bindings, binding) => {
