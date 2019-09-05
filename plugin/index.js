@@ -363,9 +363,11 @@ export default {
       response: (response) => {
         if (response.ok) {
           const request = response.request
-          if (request.method === 'PUT' || request.method === 'POST' || request.method === 'PATCH') {
-            response.json().then(datas => {
+          if (request && (request.method === 'PUT' || request.method === 'POST' || request.method === 'PATCH')) {
+            response.clone().json().then(datas => {
               cacheDatas(datas)
+            }).catch(e => {
+              //nothing
             })
           }
         }
