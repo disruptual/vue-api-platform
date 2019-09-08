@@ -102,13 +102,20 @@ class ApiCache {
     this.parents = parent ? [parent] : []
     this.bindings = binding ? [binding] : []
     this.deleteTimeout = null
+    this.abortController = null
 
     if (data && data instanceof Object) this.data = data
   }
 
   get data() {
-    if (this.getDelay() < 0) {
-      this.load()
+    const delay = this.getDelay()
+    if (delay < 0 && !this.abortController) {
+      const parentsLoading = this.parents.reduce((loading, parent) => {
+        return loading || (parent.abortController !== null && parent.getDelay() > delay)
+      }, false)
+      if (!parentsLoading) {
+        this.load()
+      }
     }
     if (
       this.data_ &&
@@ -154,8 +161,11 @@ class ApiCache {
   }
 
   load() {
-    this.update = (new Date()).getTime()
-    return fetch(this.uri).then(response => {
+    if (this.abortController)
+      this.abortController.abort()
+    this.abortController = new AbortController()
+    return fetch(this.uri, {signal: this.abortController.signal}).then(response => {
+      this.abortController = null
       if (response.ok) {
 
         // try {
@@ -164,11 +174,11 @@ class ApiCache {
         //     if (matches) {
         //       const hubUrl = matches[1]
         //       const url = new URL(hubUrl)
+        //       url.searchParams.append('topic', 'https://kiabi.apipreprod.disruptual.com/messages/{id}');
         //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
         //       datas.eventSource.onmessage = e => {
         //         console.log('mercure', e)
         //       }
-        //       console.log('eventSourceCredentials', datas.eventSource.withCredentials)
         //     }
         //   }
         // } catch (e) {
@@ -184,6 +194,7 @@ class ApiCache {
         throw response
       }
     }).catch(error => {
+      this.abortController = null
       this.propagateError(this.key, response)
       throw error
     })
@@ -233,6 +244,8 @@ class ApiCache {
       if (delay <= 0) {
         datas.caches = datas.caches.filter(cache => cache !== this)
       } else {
+        if (this.abortController)
+          this.abortController.abort()
         this.deleteTimeout = setTimeout(() => {
           datas.caches = datas.caches.filter(cache => cache !== this)
         }, delay)
