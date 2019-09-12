@@ -140,18 +140,21 @@ class ApiCache {
     this.update = (new Date()).getTime()
 
     if(value) {
-      this.uri = value['@id']
+      if (value.hasOwnProperty('@id')) {
+        this.uri = value['@id']
+      }
 
-      if (value['@type'] === 'hydra:Collection') {
+      if (value.hasOwnProperty('@type') && value['@type'] === 'hydra:Collection') {
         value['hydra:member'].forEach(member => {
-
-          let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
-          if (cache) {
-            cache.data = member
-            cache.parents = uniq([...cache.parents, this])
-          } else {
-            cache = new ApiCache(member['@id'], null, member, this)
-            datas.caches.push(cache)
+          if (member.hasOwnProperty('@id')) {
+            let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+            if (cache) {
+              cache.data = member
+              cache.parents = uniq([...cache.parents, this])
+            } else {
+              cache = new ApiCache(member['@id'], null, member, this)
+              datas.caches.push(cache)
+            }
           }
         })
       }
@@ -175,6 +178,7 @@ class ApiCache {
         //       const hubUrl = matches[1]
         //       const url = new URL(hubUrl)
         //       url.searchParams.append('topic', 'https://kiabi.apipreprod.disruptual.com/messages/{id}');
+        //       url.searchParams.append('topic', 'https://kiabi.apipreprod.disruptual.com/users/{id}');
         //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
         //       datas.eventSource.onmessage = e => {
         //         console.log('mercure', e)
