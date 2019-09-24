@@ -111,7 +111,7 @@ class ApiCache {
     const delay = this.getDelay()
     if (delay < 0 && !this.abortController) {
       const parentsLoading = this.parents.reduce((loading, parent) => {
-        return loading || (parent.abortController !== null && parent.getDelay() > delay)
+        return loading || (parent.abortController !== null && parent.getDelay() <= delay)
       }, false)
       if (!parentsLoading) {
         this.load()
@@ -168,9 +168,7 @@ class ApiCache {
       this.abortController.abort()
     this.abortController = new AbortController()
     return fetch(this.uri, {signal: this.abortController.signal}).then(response => {
-      this.abortController = null
       if (response.ok) {
-
         // try {
         //   if (!datas.eventSource && response.headers.has('Link')) {
         //     const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
@@ -190,6 +188,7 @@ class ApiCache {
         // }
 
         return response.json().then(data => {
+          this.abortController = null
           this.data = data
           return data
         })
@@ -245,15 +244,11 @@ class ApiCache {
 
     if (this.bindings.length === 0) {
       const delay = this.getDelay()
-      if (delay <= 0) {
+      if (this.abortController)
+        this.abortController.abort()
+      this.deleteTimeout = setTimeout(() => {
         datas.caches = datas.caches.filter(cache => cache !== this)
-      } else {
-        if (this.abortController)
-          this.abortController.abort()
-        this.deleteTimeout = setTimeout(() => {
-          datas.caches = datas.caches.filter(cache => cache !== this)
-        }, delay)
-      }
+      }, delay <= 0 ? 50 : delay + 50)
     }
   }
 }
