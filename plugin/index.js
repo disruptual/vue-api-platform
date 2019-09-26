@@ -244,8 +244,10 @@ class ApiCache {
 
     if (this.bindings.length === 0) {
       const delay = this.getDelay()
-      if (this.abortController)
+      if (this.abortController) {
         this.abortController.abort()
+        this.update = 0
+      }
       this.deleteTimeout = setTimeout(() => {
         datas.caches = datas.caches.filter(cache => cache !== this)
       }, delay <= 0 ? 50 : delay + 50)
