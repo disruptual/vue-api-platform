@@ -193,17 +193,17 @@ class ApiCache {
           return data
         })
       } else {
-        this.propagateError(this.key, response)
+        this.propagateError(response)
         throw response
       }
     }).catch(error => {
       this.abortController = null
-      this.propagateError(this.key, response)
+      this.propagateError(error)
       throw error
     })
   }
 
-  propagateError(key, error) {
+  propagateError(error) {
     this.bindings.forEach(binding => {
       if (binding.vm.$options.apiBindError) {
         binding.vm.$options.apiBindError.bind(binding.vm)(binding.key, error)
