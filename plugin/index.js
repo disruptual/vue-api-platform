@@ -24,21 +24,25 @@ const startMercure = response => {
           const target = data['@id']
 
           let cache = datas.caches.find(cache => cache.urls.includes(target))
-          if (cache) {
-            cache.data = data
+          if (Object.keys(data).length <= 1) {
+            cache.data = null
           } else {
-            cache = new ApiCache(target, null, data)
-            datas.caches.push(cache)
-          }
+            if (cache) {
+              cache.data = data
+            } else {
+              cache = new ApiCache(target, null, data)
+              datas.caches.push(cache)
+            }
 
-          if (data.hasOwnProperty('mercure:related')) {
-            data['mercure:related'].forEach(related => {
-              datas.caches
-                .filter(cache => cache.urls.includes(related))
-                .forEach(cache => {
-                  cache.load()
-                })
-            })
+            if (data.hasOwnProperty('mercure:related')) {
+              data['mercure:related'].forEach(related => {
+                datas.caches
+                  .filter(cache => cache.urls.includes(related))
+                  .forEach(cache => {
+                    cache.load()
+                  })
+              })
+            }
           }
         }
       }
@@ -96,10 +100,14 @@ class ApiCache {
     ) {
       return {
         ...this.data_,
-        'hydra:member': this.data_['hydra:member'].map(member => {
+        'hydra:member': this.data_['hydra:member'].reduce((members, member) => {
           const cache = datas.caches.find(cache => cache.urls.includes(member['@id']))
-          return cache ? cache.data : member
-        })
+          const data = cache ? cache.data : member
+          if (data) {
+            members.push(data)
+          }
+          return members
+        }, [])
       }
     } else {
       return this.data_
@@ -288,11 +296,11 @@ class ApiBinding {
       })
     })
 
-    Promise.all(promises).then(datas => {
+    Promise.all(promises).then(dataList => {
       if (this.array) {
-        this.vm[this.key] = datas.filter(data => data)
+        this.vm[this.key] = dataList.filter(data => data)
       } else {
-        this.vm[this.key] = datas[0]
+        this.vm[this.key] = dataList[0]
       }
     })
   }
