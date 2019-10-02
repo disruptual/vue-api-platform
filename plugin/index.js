@@ -4,78 +4,49 @@ import fetchIntercept from '@neorel/fetch-intercept'
 const datas = {
   bindings: [],
   caches: [],
-  eventSource: null
+  eventSource: null,
+  mercure: null
 }
 
-//
-// let mercureHubs = {}
-//
-// class MercureHub {
-//   constructor(hubUrl, ...topics) {
-//     this.topics = topics
-//
-//     const url = new URL(hubUrl)
-//     topics.forEach(topic => {
-//       url.searchParams.append('topic', topic)
-//     })
-//
-//     this.eventSource = new EventSource(url.toString())
-//     this.eventSource.onmessage = e => {
-//       binding.data = e.data
-//       binding.components.forEach(component => {
-//         component.vm[component.key] = e.data
-//       })
-//     }
-//   }
-//
-//   static bind(hubUrl, ...topics) {
-//     let hub = mercureHubs[hubUrl]
-//     if (hub) {
-//       const oldHub = hub
-//
-//       hub = new MercureHub(hubUrl, ...[...oldHub.topics, ...topics])
-//       mercureHubs[hubUrl] = hub
-//
-//       oldHub.eventSource.close()
-//
-//       return hub
-//     } else {
-//       hub = new MercureHub(hubUrl, ...topics)
-//       mercureHubs[hubUrl] = hub
-//       return hub
-//     }
-//   }
-//
-//   static unbind(hubUrl, ...topics) {
-//     let hub = mercureHubs[hubUrl]
-//
-//     if (hub) {
-//       const oldHub = hub
-//
-//       hub = new MercureHub(hubUrl, ...hub.topics.filter(topic => !topics.includes(topic)))
-//       mercureHubs[hubUrl] = hub
-//
-//       oldHub.eventSource.close()
-//
-//       return hub
-//     }
-//   }
-// }
-//
-// const getHubUrlFromResponse = response => {
-//   return null
-//   if (response
-//     && response.headers
-//     && response.headers.get
-//     && response.headers.get('Link')
-//   ) {
-//     const matches = response.headers.get('Link')
-//       .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
-//     if (matches) {
-//       return matches[1]
-//     }
-//   }
-// }
+const startMercure = response => {
+  try {
+    if (datas.mercure.topics.length && !datas.eventSource && response.headers.has('Link')) {
+      const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
+      if (matches) {
+        const hubUrl = matches[1]
+        const url = new URL(hubUrl)
+        datas.mercure.topics.forEach(topic => {
+          url.searchParams.append('topic', topic);
+        })
+        datas.eventSource = new EventSource(url.toString(), {withCredentials: datas.mercure.withCredentials})
+        datas.eventSource.onmessage = e => {
+          const data = JSON.parse(e.data)
+          const target = data['@id']
+
+          let cache = datas.caches.find(cache => cache.urls.includes(target))
+          if (cache) {
+            cache.data = data
+          } else {
+            cache = new ApiCache(target, null, data)
+            datas.caches.push(cache)
+          }
+
+          if (data.hasOwnProperty('mercure:related')) {
+            data['mercure:related'].forEach(related => {
+              datas.caches
+                .filter(cache => cache.urls.includes(related))
+                .forEach(cache => {
+                  cache.load()
+                })
+            })
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error(e)
+  }
+}
 
 const generateUrls = (targets) => {
   if (targets) {
@@ -169,23 +140,7 @@ class ApiCache {
     this.abortController = new AbortController()
     return fetch(this.uri, {signal: this.abortController.signal}).then(response => {
       if (response.ok) {
-        // try {
-        //   if (!datas.eventSource && response.headers.has('Link')) {
-        //     const matches = response.headers.get('Link').match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
-        //     if (matches) {
-        //       const hubUrl = matches[1]
-        //       const url = new URL(hubUrl)
-        //       url.searchParams.append('topic', 'https://kiabi.apipreprod.disruptual.com/messages/{id}');
-        //       url.searchParams.append('topic', 'https://kiabi.apipreprod.disruptual.com/users/{id}');
-        //       datas.eventSource = new EventSource(url.toString(), {withCredentials: true})
-        //       datas.eventSource.onmessage = e => {
-        //         console.log('mercure', e)
-        //       }
-        //     }
-        //   }
-        // } catch (e) {
-        //   console.error(e)
-        // }
+        startMercure(response)
 
         return response.json().then(data => {
           this.abortController = null
@@ -366,13 +321,26 @@ const cacheDatas = function (data) {
 }
 
 export default {
-  install(Vue) {
+  install(Vue, {mercure = {}}) {
+    datas.mercure = {
+      topics: [],
+      withCredentials: true,
+      ...mercure
+    }
     if (window) {
       window.ApiDatas = datas
     }
 
     fetchIntercept.register({
-      request: (url, config) => [url, config],
+      request: (url, config) => {
+        return [
+          url,
+          {
+            ...config,
+            credentials: datas.mercure.withCredentials ? 'include' : 'omit'
+          }
+        ]
+      },
       requestError: (error) => Promise.reject(error),
       response: (response) => {
         if (response.ok) {
