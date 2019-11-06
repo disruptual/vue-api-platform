@@ -1,6 +1,6 @@
 {
   "name": "vue-api-platform",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Link between APIPlatform (and mercure) and Vuejs",
   "main": "index.js",
   "scripts": {

@@ -25,7 +25,9 @@ const startMercure = response => {
 
           let cache = datas.caches.find(cache => cache.urls.includes(target))
           if (Object.keys(data).length <= 1) {
-            cache.data = null
+            if (cache) {
+              cache.data = null
+            }
           } else {
             if (cache) {
               cache.data = data
