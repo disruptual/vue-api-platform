@@ -8,6 +8,42 @@ const datas = {
   mercure: null
 }
 
+const connectMercure = url => {
+  const oldEventSource = datas.eventSource
+  datas.eventSource = new EventSource(url.toString(), {withCredentials: datas.mercure.withCredentials})
+  datas.eventSource.onmessage = e => {
+    const data = JSON.parse(e.data)
+    const target = data['@id']
+
+    let cache = datas.caches.find(cache => cache.urls.includes(target))
+    if (Object.keys(data).length <= 1) {
+      if (cache) {
+        cache.data = null
+      }
+    } else {
+      if (cache) {
+        cache.data = data
+      } else {
+        cache = new ApiCache(target, null, data)
+        datas.caches.push(cache)
+      }
+
+      if (data.hasOwnProperty('mercure:related')) {
+        data['mercure:related'].forEach(related => {
+          datas.caches
+            .filter(cache => cache.urls.includes(related))
+            .forEach(cache => {
+              cache.load()
+            })
+        })
+      }
+    }
+  }
+  if (oldEventSource) {
+    oldEventSource.close()
+  }
+}
+
 const startMercure = response => {
   try {
     if (datas.mercure.topics.length && !datas.eventSource && response.headers.has('Link')) {
@@ -18,35 +54,7 @@ const startMercure = response => {
         datas.mercure.topics.forEach(topic => {
           url.searchParams.append('topic', topic);
         })
-        datas.eventSource = new EventSource(url.toString(), {withCredentials: datas.mercure.withCredentials})
-        datas.eventSource.onmessage = e => {
-          const data = JSON.parse(e.data)
-          const target = data['@id']
-
-          let cache = datas.caches.find(cache => cache.urls.includes(target))
-          if (Object.keys(data).length <= 1) {
-            if (cache) {
-              cache.data = null
-            }
-          } else {
-            if (cache) {
-              cache.data = data
-            } else {
-              cache = new ApiCache(target, null, data)
-              datas.caches.push(cache)
-            }
-
-            if (data.hasOwnProperty('mercure:related')) {
-              data['mercure:related'].forEach(related => {
-                datas.caches
-                  .filter(cache => cache.urls.includes(related))
-                  .forEach(cache => {
-                    cache.load()
-                  })
-              })
-            }
-          }
-        }
+        connectMercure(url)
       }
     }
   } catch (e) {
@@ -437,6 +445,12 @@ export default {
         }
         return bindings
       }, [])
+    }
+
+    Vue.prototype.$restartMercure = function () {
+      if (datas.eventSource) {
+        connectMercure(datas.eventSource.url)
+      }
     }
   }
 }
