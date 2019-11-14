@@ -38,6 +38,10 @@ const connectMercure = url => {
         })
       }
     }
+
+    datas.mercure.listeners.forEach(listener => {
+      listener(data)
+    })
   }
   if (oldEventSource) {
     oldEventSource.close()
@@ -341,6 +345,7 @@ const cacheDatas = function (data) {
 export default {
   install(Vue, {mercure = {}}) {
     datas.mercure = {
+      listeners: [],
       topics: [],
       withCredentials: true,
       ...mercure
@@ -451,6 +456,14 @@ export default {
       if (datas.eventSource) {
         connectMercure(datas.eventSource.url)
       }
+    }
+
+    Vue.prototype.$registerMercure = function (listener) {
+      datas.mercure.listeners.push(listener)
+    }
+
+    Vue.prototype.$unregisterMercure = function (listener) {
+      datas.mercure.listeners = datas.mercure.listeners.filter(l => l !== listener)
     }
   }
 }
