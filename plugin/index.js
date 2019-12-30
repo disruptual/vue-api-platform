@@ -403,9 +403,17 @@ export default {
         const apiOptions = this.$options.api
         if (apiOptions) {
           Object.keys(apiOptions).forEach(key => {
-            this.$watch(apiOptions[key].bind(this), (newVal) => {
-              this.$bindApi(key, newVal)
-            }, {immediate: true})
+            let func = null
+            if (apiOptions[key] instanceof Function) {
+              func = apiOptions[key]
+            } else if (apiOptions[key] instanceof Object && apiOptions[key].hasOwnProperty('func') && apiOptions[key].func instanceof Function) {
+              func = apiOptions[key].func
+            }
+            if (func) {
+              this.$watch(func.bind(this), (newVal) => {
+                this.$bindApi(key, newVal)
+              }, {immediate: true})
+            }
           })
         }
       },
