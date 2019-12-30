@@ -82,9 +82,19 @@ const generateUrls = (targets) => {
   }
 }
 
+const getDataId = data => {
+  if (data.hasOwnProperty('hydra:view') && data['hydra:view'].hasOwnProperty('@id')) {
+    return data['hydra:view']['@id']
+  }
+  if (data.hasOwnProperty('@id')) {
+    return data['@id']
+  }
+  return null
+}
+
 class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
-    this.uri = data ? data['@id'] : url
+    this.uri = data ? getDataId(data) : url
     this.data_ = null
     this.urls = [url]
     this.update = (new Date()).getTime()
@@ -115,7 +125,7 @@ class ApiCache {
       return {
         ...this.data_,
         'hydra:member': this.data_['hydra:member'].reduce((members, member) => {
-          const cache = datas.caches.find(cache => cache.urls.includes(member['@id']))
+          const cache = datas.caches.find(cache => cache.urls.includes(getDataId(member)))
           const data = cache ? cache.data : member
           if (data) {
             members.push(data)
@@ -133,19 +143,19 @@ class ApiCache {
     this.update = (new Date()).getTime()
 
     if(value) {
-      if (value.hasOwnProperty('@id')) {
-        this.uri = value['@id']
+      if (getDataId(value)) {
+        this.uri = getDataId(value)
       }
 
       if (value.hasOwnProperty('@type') && value['@type'] === 'hydra:Collection') {
         value['hydra:member'].forEach(member => {
-          if (member.hasOwnProperty('@id')) {
-            let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+          if (getDataId(member)) {
+            let cache = datas.caches.find(cache => cache.uri === getDataId(member) || cache.urls.includes(getDataId(member)))
             if (cache) {
               cache.data = member
               cache.parents = uniq([...cache.parents, this])
             } else {
-              cache = new ApiCache(member['@id'], null, member, this)
+              cache = new ApiCache(getDataId(member), null, member, this)
               datas.caches.push(cache)
             }
           }
