@@ -35,6 +35,34 @@ export default {
 }
 ```
 
+### With parameters
+```js
+export default {
+  data() {
+    return {
+      users_: null,
+      pages: [1,2,3]
+    }
+  },
+  props: [
+    'users'
+  ],
+  api: {
+    users_: {
+      func () {
+        return this.users
+      },
+      pages () {
+        return this.pages      
+      }
+    }
+  },
+  apiBindError(key, error) {
+    // An error occurs during the binding
+  }
+}
+```
+
 ## Functions
 
 - $cacheDataApi
@@ -107,6 +135,7 @@ The mixin have got many parameters:
 - collection (false) : set the data is an URI of a collection, so the return datas are in an array
 - array (false) : set that the query is an array, so the return datas are in an array
 - required (true) : set the props required or not
+- pages: list of pages (only works with collection)
 
 With parameters
 

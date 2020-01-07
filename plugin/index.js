@@ -82,9 +82,19 @@ const generateUrls = (targets) => {
   }
 }
 
+const getDataId = data => {
+  if (data.hasOwnProperty('hydra:view') && data['hydra:view'].hasOwnProperty('@id')) {
+    return data['hydra:view']['@id']
+  }
+  if (data.hasOwnProperty('@id')) {
+    return data['@id']
+  }
+  return null
+}
+
 class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
-    this.uri = data ? data['@id'] : url
+    this.uri = data ? getDataId(data) : url
     this.data_ = null
     this.urls = [url]
     this.update = (new Date()).getTime()
@@ -115,7 +125,7 @@ class ApiCache {
       return {
         ...this.data_,
         'hydra:member': this.data_['hydra:member'].reduce((members, member) => {
-          const cache = datas.caches.find(cache => cache.urls.includes(member['@id']))
+          const cache = datas.caches.find(cache => cache.urls.includes(getDataId(member)))
           const data = cache ? cache.data : member
           if (data) {
             members.push(data)
@@ -133,19 +143,19 @@ class ApiCache {
     this.update = (new Date()).getTime()
 
     if(value) {
-      if (value.hasOwnProperty('@id')) {
-        this.uri = value['@id']
+      if (getDataId(value)) {
+        this.uri = getDataId(value)
       }
 
       if (value.hasOwnProperty('@type') && value['@type'] === 'hydra:Collection') {
         value['hydra:member'].forEach(member => {
-          if (member.hasOwnProperty('@id')) {
-            let cache = datas.caches.find(cache => cache.uri === member['@id'] || cache.urls.includes(member['@id']))
+          if (getDataId(member)) {
+            let cache = datas.caches.find(cache => cache.uri === getDataId(member) || cache.urls.includes(getDataId(member)))
             if (cache) {
               cache.data = member
               cache.parents = uniq([...cache.parents, this])
             } else {
-              cache = new ApiCache(member['@id'], null, member, this)
+              cache = new ApiCache(getDataId(member), null, member, this)
               datas.caches.push(cache)
             }
           }
@@ -234,7 +244,7 @@ class ApiCache {
 
 class ApiBinding {
 
-  constructor(targets, vm, key, array=false) {
+  constructor(targets, vm, key, array=false, options=false) {
     this.vm = vm
     this.key = key
     this.targets = targets
@@ -244,6 +254,7 @@ class ApiBinding {
     this.stopBindingTimeout = null
     this.isLoading = false
     this.vm.$data.$apiBindings = [...this.vm.$data.$apiBindings, this]
+    this.options = options
   }
 
   startBinding() {
@@ -262,8 +273,8 @@ class ApiBinding {
     }, 50)
   }
 
-  static create(targets, vm, key, array=false) {
-    const binding = new ApiBinding(targets, vm, key, array)
+  static create(targets, vm, key, array=false, options={}) {
+    const binding = new ApiBinding(targets, vm, key, array, options)
     datas.bindings.push(binding)
     binding.bind()
     return binding
@@ -284,7 +295,22 @@ class ApiBinding {
   }
 
   bind() {
-    const promises = this.targets.map(target => {
+    let pages = null
+    if (this.options.pages) {
+      pages = this.options.pages()
+    }
+    const targets = this.targets.reduce((targets, target) => {
+      if (pages) {
+        pages.forEach(page => {
+          targets.push(target + (target.includes('?') ? '&' : '?') + `page=${page}`)
+        })
+      } else {
+        targets.push(target)
+      }
+      return targets
+    }, [])
+
+    const promises = targets.map(target => {
 
       let cache = this.caches.find(cache => cache.urls.includes(target))
       if (cache) {
@@ -311,7 +337,7 @@ class ApiBinding {
     })
 
     Promise.all(promises).then(dataList => {
-      if (this.array) {
+      if (this.array || pages) {
         this.vm[this.key] = dataList.filter(data => data)
       } else {
         this.vm[this.key] = dataList[0]
@@ -393,9 +419,28 @@ export default {
         const apiOptions = this.$options.api
         if (apiOptions) {
           Object.keys(apiOptions).forEach(key => {
-            this.$watch(apiOptions[key].bind(this), (newVal) => {
-              this.$bindApi(key, newVal)
-            }, {immediate: true})
+            let func = null
+            const options = {}
+            if (apiOptions[key] instanceof Function) {
+              func = apiOptions[key]
+            } else if (apiOptions[key] instanceof Object ) {
+              if (apiOptions[key].hasOwnProperty('func') && apiOptions[key].func instanceof Function) {
+                func = apiOptions[key].func
+              }
+              if (apiOptions[key].hasOwnProperty('pages') && apiOptions[key].pages instanceof Function) {
+                options.pages = apiOptions[key].pages
+              }
+            }
+            if (func) {
+              this.$watch(func.bind(this), (newVal) => {
+                this.$bindApi(key, newVal, options)
+              }, {immediate: true})
+            }
+            if (options.pages) {
+              this.$watch(options.pages.bind(this), (newVal) => {
+                this.$bindApi(key, newVal, options)
+              })
+            }
           })
         }
       },
@@ -409,7 +454,7 @@ export default {
       }
     })
 
-    Vue.prototype.$bindApi = function (key, target) {
+    Vue.prototype.$bindApi = function (key, target, options={}) {
       const dataUrls = generateUrls(target)
       if (!dataUrls || dataUrls.length === 0) {
         this[key] = Array.isArray(target) ? [] : null
@@ -420,7 +465,7 @@ export default {
       if (binding) {
         binding.update(dataUrls, Array.isArray(target))
       } else {
-        ApiBinding.create(dataUrls, this, key, Array.isArray(target))
+        ApiBinding.create(dataUrls, this, key, Array.isArray(target), options)
       }
 
     }
