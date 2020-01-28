@@ -280,10 +280,10 @@ class ApiBinding {
     return binding
   }
 
-  update(targets, array=false) {
+  update(targets, array=false, options=this.options) {
     this.targets = targets
     this.array = array
-
+    this.options = options
     this.bind()
   }
 
@@ -297,7 +297,7 @@ class ApiBinding {
   bind() {
     let pages = null
     if (this.options.pages) {
-      pages = this.options.pages()
+      pages = this.options.pages
     }
     const targets = this.targets.reduce((targets, target) => {
       if (pages) {
@@ -428,7 +428,7 @@ export default {
                 func = apiOptions[key].func
               }
               if (apiOptions[key].hasOwnProperty('pages') && apiOptions[key].pages instanceof Function) {
-                options.pages = apiOptions[key].pages
+                options.pages = apiOptions[key].pages.bind(this)()
               }
             }
             if (func) {
@@ -436,9 +436,14 @@ export default {
                 this.$bindApi(key, newVal, options)
               }, {immediate: true})
             }
-            if (options.pages) {
-              this.$watch(options.pages.bind(this), (newVal) => {
-                this.$bindApi(key, newVal, options)
+            if (apiOptions[key].pages) {
+              this.$watch(apiOptions[key].pages.bind(this), (newVal) => {
+                const binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
+                if (binding) {
+                  options.pages = newVal
+                  binding.options = options
+                  binding.bind()
+                }
               })
             }
           })
@@ -463,7 +468,7 @@ export default {
 
       let binding = datas.bindings.find(binding => binding.vm === this && binding.key === key)
       if (binding) {
-        binding.update(dataUrls, Array.isArray(target))
+        binding.update(dataUrls, Array.isArray(target), options)
       } else {
         ApiBinding.create(dataUrls, this, key, Array.isArray(target), options)
       }
