@@ -365,6 +365,10 @@ const cacheDatas = function (data) {
       datas.caches.push(cache)
     }
     cache.data = data
+
+    datas.mercure.listeners.forEach(listener => {
+      listener(data)
+    })
   }
 }
 
