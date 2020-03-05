@@ -2,7 +2,7 @@ import uniq from 'lodash.uniq'
 import debounce from 'lodash/debounce'
 import fetchIntercept from '@neorel/fetch-intercept'
 
-const DEFAULT_DEBOUNCE_TIMEOUT = 500;
+const DEFAULT_DEBOUNCE_TIMEOUT = 200;
 
 const datas = {
   bindings: [],
@@ -379,7 +379,7 @@ const cacheDatas = function (data) {
 }
 
 export default {
-  install(Vue, {debounce = true, debounceTimeout = DEFAULT_DEBOUNCE_TIMEOUT, mercure = {}}) {
+  install(Vue, {debounce = false, debounceTimeout = DEFAULT_DEBOUNCE_TIMEOUT, mercure = {}}) {
     datas.mercure = {
       listeners: [],
       topics: [],
