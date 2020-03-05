@@ -287,7 +287,6 @@ class ApiBinding {
   }
   
   _update(targets, array=false, options=this.options) {
-    console.log('debounced update')
     this.targets = targets
     this.array = array
     this.options = options
@@ -440,6 +439,12 @@ export default {
               }
               if (apiOptions[key].hasOwnProperty('pages') && apiOptions[key].pages instanceof Function) {
                 options.pages = apiOptions[key].pages.bind(this)()
+              }
+              if (apiOptions[key].hasOwnProperty('debounce')) {
+                options.debounce = !!apiOptions[key].debounce;
+              }
+              if (apiOptions[key].hasOwnProperty('debounceTimeout') && typeof apiOptions[key].debounceTimeout === 'number') {
+                options.debounceTimeout = apiOptions[key].debounceTimeout;
               }
             }
             if (func) {
