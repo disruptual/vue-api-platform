@@ -1,5 +1,8 @@
 import uniq from 'lodash.uniq'
+import debounce from 'lodash/debounce'
 import fetchIntercept from '@neorel/fetch-intercept'
+
+const DEFAULT_DEBOUNCE_TIMEOUT = 200;
 
 const datas = {
   bindings: [],
@@ -255,6 +258,9 @@ class ApiBinding {
     this.isLoading = false
     this.vm.$data.$apiBindings = [...this.vm.$data.$apiBindings, this]
     this.options = options
+    this.update = this.options && this.options.debounce
+      ? debounce(this._update.bind(this), this.options.debounceTimeout, { leading: true })
+      : this._update;
   }
 
   startBinding() {
@@ -280,7 +286,7 @@ class ApiBinding {
     return binding
   }
 
-  update(targets, array=false, options=this.options) {
+  _update(targets, array=false, options=this.options) {
     this.targets = targets
     this.array = array
     this.options = options
@@ -373,7 +379,7 @@ const cacheDatas = function (data) {
 }
 
 export default {
-  install(Vue, {mercure = {}}) {
+  install(Vue, {debounce = false, debounceTimeout = DEFAULT_DEBOUNCE_TIMEOUT, mercure = {}}) {
     datas.mercure = {
       listeners: [],
       topics: [],
@@ -434,6 +440,12 @@ export default {
               if (apiOptions[key].hasOwnProperty('pages') && apiOptions[key].pages instanceof Function) {
                 options.pages = apiOptions[key].pages.bind(this)()
               }
+              if (apiOptions[key].hasOwnProperty('debounce')) {
+                options.debounce = !!apiOptions[key].debounce;
+              }
+              if (apiOptions[key].hasOwnProperty('debounceTimeout') && typeof apiOptions[key].debounceTimeout === 'number') {
+                options.debounceTimeout = apiOptions[key].debounceTimeout;
+              }
             }
             if (func) {
               this.$watch(func.bind(this), (newVal) => {
@@ -464,6 +476,7 @@ export default {
     })
 
     Vue.prototype.$bindApi = function (key, target, options={}) {
+      const defaultOptions = { debounce, debounceTimeout }
       const dataUrls = generateUrls(target)
       if (!dataUrls || dataUrls.length === 0) {
         this[key] = Array.isArray(target) ? [] : null
@@ -474,7 +487,7 @@ export default {
       if (binding) {
         binding.update(dataUrls, Array.isArray(target), options)
       } else {
-        ApiBinding.create(dataUrls, this, key, Array.isArray(target), options)
+        ApiBinding.create(dataUrls, this, key, Array.isArray(target), Object.assign(defaultOptions, options))
       }
 
     }

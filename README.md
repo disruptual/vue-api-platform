@@ -208,3 +208,36 @@ export default {
   ]
 }
 ```
+
+## Debouncing queries
+You can enable  [debounce](https://davidwalsh.name/javascript-debounce-function) for queries at a global level, or mixin level. The query will be executed once immediately the first time, afterwards it won't be executed again if it's called before its `debounceTimeout` is expired. This is useful if you need to fire a query according to a text input change for example.
+By default, debouncing is disabled for all queries.
+
+### use at global level
+
+```js
+import ApiPlugin from 'vue-api-platform/plugin'
+
+Vue.use(ApiPlugin, {
+  debounce: Boolean, // default to false
+  debounceTimeout: Number // defaults to 500ms
+  // other options...
+})
+```
+
+### use at mixin level
+
+```js
+import ApiMixin from 'vue-api-platform/mixin'
+export default {
+  mixin: [
+    ApiMixin('myEntity', {
+      options: {
+        debounce: Boolean, // default to false
+        debounceTimeout: Number // defaults to 500ms
+      }
+      // other options...
+    })
+  ]
+}
+```
