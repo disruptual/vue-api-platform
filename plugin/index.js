@@ -16,6 +16,11 @@ const connectMercure = url => {
   datas.eventSource = new EventSource(url.toString(), {withCredentials: datas.mercure.withCredentials})
   datas.eventSource.onmessage = e => {
     const data = JSON.parse(e.data)
+
+    if (datas.mercure.interceptors.some(interceptor => interceptor(data))) {
+      return
+    }
+
     const target = data['@id']
 
     let cache = datas.caches.find(cache => cache.urls.includes(target))
@@ -382,6 +387,7 @@ export default {
   install(Vue, {debounce = false, debounceTimeout = DEFAULT_DEBOUNCE_TIMEOUT, mercure = {}}) {
     datas.mercure = {
       listeners: [],
+      interceptors: [],
       topics: [],
       withCredentials: true,
       ...mercure
@@ -531,6 +537,14 @@ export default {
 
     Vue.prototype.$unregisterMercure = function (listener) {
       datas.mercure.listeners = datas.mercure.listeners.filter(l => l !== listener)
+    }
+
+    Vue.prototype.$registerMercureInterceptor = function (interceptor) {
+      datas.mercure.interceptors.push(interceptor)
+    }
+
+    Vue.prototype.$unregisterMercureInterceptor = function (interceptor) {
+      datas.mercure.interceptors = datas.mercure.interceptors.filter(i => i !== interceptor)
     }
   }
 }
