@@ -105,6 +105,7 @@ class ApiCache {
     this.bindings = binding ? [binding] : []
     this.deleteTimeout = null
     this.abortController = null
+    this.isLoading = false
 
     if (data && data instanceof Object) this.data = data
   }
@@ -170,10 +171,12 @@ class ApiCache {
   }
 
   load() {
+    this.isLoading = true
     if (this.abortController)
       this.abortController.abort()
     this.abortController = new AbortController()
     return fetch(this.uri, {signal: this.abortController.signal}).then(response => {
+      this.isLoading = false
       if (response.ok) {
         startMercure(response)
 
@@ -319,15 +322,15 @@ class ApiBinding {
     const promises = targets.map(target => {
 
       let cache = this.caches.find(cache => cache.urls.includes(target))
-      if (cache) {
+      if (cache && !cache.isLoading) {
         return Promise.resolve(cache.data)
       }
 
       cache = datas.caches.find(cache => cache.urls.includes(target))
-      if (cache) {
-        cache.addBinding(this)
-        this.caches.push(cache)
-        return Promise.resolve(cache.data)
+      if (cache && !cache.isLoading) {
+        cache.addBinding(this);
+        this.caches.push(cache);
+        return Promise.resolve(cache.data);
       }
 
       cache = new ApiCache(target, this)
