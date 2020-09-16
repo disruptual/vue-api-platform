@@ -153,13 +153,14 @@ class ApiCache {
 
       if (value.hasOwnProperty('@type') && value['@type'] === 'hydra:Collection') {
         value['hydra:member'].forEach(member => {
-          if (getDataId(member)) {
-            let cache = datas.caches.find(cache => cache.uri === getDataId(member) || cache.urls.includes(getDataId(member)))
+          const id = getDataId(member)
+          if (id) {
+            let cache = datas.caches.find(cache => cache.uri === id || cache.urls.includes(id))
             if (cache) {
               cache.data = member
               cache.parents = uniq([...cache.parents, this])
             } else {
-              cache = new ApiCache(getDataId(member), null, member, this)
+              cache = new ApiCache(id, null, member, this)
               datas.caches.push(cache)
             }
           }
@@ -171,12 +172,16 @@ class ApiCache {
   }
 
   load() {
+    if (this.isLoading) return this._fetchPromise
+
     this.isLoading = true
     if (this.abortController)
       this.abortController.abort()
     this.abortController = new AbortController()
-    return fetch(this.uri, {signal: this.abortController.signal}).then(response => {
+
+    this._fetchPromise = fetch(this.uri, {signal: this.abortController.signal}).then(response => {
       this.isLoading = false
+      // console.log('load finish', this.uri)
       if (response.ok) {
         startMercure(response)
 
@@ -194,6 +199,8 @@ class ApiCache {
       this.propagateError(error)
       throw error
     })
+
+    return this._fetchPromise
   }
 
   propagateError(error) {
@@ -320,20 +327,22 @@ class ApiBinding {
     }, [])
 
     const promises = targets.map(target => {
-
       let cache = this.caches.find(cache => cache.urls.includes(target))
       if (cache && !cache.isLoading) {
         return Promise.resolve(cache.data)
       }
-
+      
       cache = datas.caches.find(cache => cache.urls.includes(target))
       if (cache && !cache.isLoading) {
         cache.addBinding(this);
         this.caches.push(cache);
         return Promise.resolve(cache.data);
       }
-
-      cache = new ApiCache(target, this)
+      
+      if (!cache) {
+        cache = new ApiCache(target, this)
+      }
+      
       datas.caches.push(cache)
       this.caches.push(cache)
 
