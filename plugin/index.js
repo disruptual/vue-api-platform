@@ -66,7 +66,7 @@ export default {
       },
       requestError: (error) => Promise.reject(error),
       response: (response) => {
-        if (!response.ok) return;
+        if (!response.ok) return response;
         startMercure(response);
         const { request } = response;
         if (request && ["PUT", "POST", "PATCH"].includes(request.method)) {
