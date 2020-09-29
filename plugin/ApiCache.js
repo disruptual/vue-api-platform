@@ -2,6 +2,8 @@ import uniq from "lodash.uniq";
 import datas from "./state";
 import { getDataId, isCollection } from "./utils";
 
+const CACHE_TIMEOUT = 1 * 1000 * 30; // 30 seconds
+
 export class ApiCache {
   constructor(url, binding = null, data = null, parent = null) {
     this.uri = data ? getDataId(data) : url;
@@ -145,7 +147,7 @@ export class ApiCache {
   }
 
   getDelay() {
-    return 1 * 1000 - (new Date().getTime() - this.update);
+    return CACHE_TIMEOUT - (new Date().getTime() - this.update);
   }
 
   addBinding(binding) {
@@ -177,7 +179,6 @@ export class ApiCache {
 
     if (this.isStatic) return;
     this.deleteTimeout = setTimeout(() => {
-      console.log("%cdeleting cache", "color: orange", this.uri);
       datas.caches = datas.caches.filter((cache) => cache !== this);
     }, Math.max(delay + 50, 50));
   }
