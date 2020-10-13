@@ -122,6 +122,9 @@ export default {
               ) {
                 options.debounceTimeout = apiOptions[key].debounceTimeout;
               }
+              if (apiOptions[key].freezeUri) {
+                options.freezeUri = apiOptions[key].freezeUri;
+              }
             }
             if (func) {
               this.$watch(
