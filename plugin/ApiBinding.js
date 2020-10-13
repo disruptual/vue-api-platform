@@ -94,7 +94,9 @@ export class ApiBinding {
       }
 
       if (!cache) {
-        cache = new ApiCache(target, this);
+        cache = new ApiCache(target, this, null, null, {
+          freezeUri: this.options.freezeUri,
+        });
       }
       datas.caches.push(cache);
       this.caches.push(cache);

@@ -5,7 +5,7 @@ import { getDataId, isCollection } from "./utils";
 const CACHE_TIMEOUT = 1 * 1000 * 30; // 30 seconds
 
 export class ApiCache {
-  constructor(url, binding = null, data = null, parent = null) {
+  constructor(url, binding = null, data = null, parent = null, options = {}) {
     this.uri = data ? getDataId(data) : url;
     this.data_ = null;
     this.urls = [url];
@@ -16,6 +16,7 @@ export class ApiCache {
     this.abortController = null;
     this.isLoading = false;
     this._isStatic = false;
+    this.options = options;
 
     if (data && data instanceof Object) this.data = data;
   }
@@ -70,7 +71,7 @@ export class ApiCache {
     if (value === undefined || value === null) return;
 
     const id = getDataId(value);
-    if (id) {
+    if (id && !this.options.freezeUri) {
       this.uri = id;
     }
     if (isCollection(value)) {
@@ -120,7 +121,6 @@ export class ApiCache {
         }
       })
       .catch((error) => {
-        console.log(error);
         this.abortController = null;
         this.propagateError(error);
         throw error;
