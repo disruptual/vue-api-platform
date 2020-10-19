@@ -125,6 +125,9 @@ export default {
               if (apiOptions[key].freezeUri) {
                 options.freezeUri = apiOptions[key].freezeUri;
               }
+              if (apiOptions[key].force) {
+                options.force = apiOptions[key].force;
+              }
             }
             if (func) {
               this.$watch(

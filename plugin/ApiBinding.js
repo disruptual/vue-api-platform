@@ -81,13 +81,15 @@ export class ApiBinding {
     }, []);
 
     const promises = targets.map((target) => {
-      let cache = this.caches.find((cache) => cache.urls.includes(target));
-      if (cache && !cache.isLoading) {
+      let cache;
+
+      cache = this.caches.find((cache) => cache.urls.includes(target));
+      if (cache && !cache.isLoading && !this.options.force) {
         return Promise.resolve(cache.data);
       }
       cache = datas.caches.find((cache) => cache.urls.includes(target));
 
-      if (cache && !cache.isLoading) {
+      if (cache && !cache.isLoading && !this.options.force) {
         cache.addBinding(this);
         this.caches.push(cache);
         return Promise.resolve(cache.data);
