@@ -167,6 +167,7 @@ export default {
       const defaultOptions = { debounce, debounceTimeout };
       const dataUrls = generateUrls(target);
       if (!dataUrls || dataUrls.length === 0) {
+        this.$unbindApi(key);
         this[key] = Array.isArray(target) ? [] : null;
         return;
       }
