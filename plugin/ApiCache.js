@@ -107,7 +107,6 @@ export class ApiCache {
       signal: this.abortController.signal,
     })
       .then((response) => {
-        this.isLoading = false;
         if (response.ok) {
           return response.json().then((data) => {
             this.isStatic = datas.staticContexts.includes(data["@context"]);
@@ -124,6 +123,9 @@ export class ApiCache {
         this.abortController = null;
         this.propagateError(error);
         throw error;
+      })
+      .finallhy(() => {
+        this.isLoading = false;
       });
 
     return this._fetchPromise;
