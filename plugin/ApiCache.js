@@ -124,7 +124,7 @@ export class ApiCache {
         this.propagateError(error);
         throw error;
       })
-      .finallhy(() => {
+      .finally(() => {
         this.isLoading = false;
       });
 
