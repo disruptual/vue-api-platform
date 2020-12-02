@@ -63,6 +63,7 @@ export class ApiBinding {
   }
 
   bind() {
+    this.startBinding();
     let pages = null;
     if (this.options.pages) {
       pages = this.options.pages;
@@ -81,6 +82,7 @@ export class ApiBinding {
     }, []);
 
     const promises = targets.map((target) => {
+      this.startBinding();
       let cache;
 
       cache = this.caches.find((cache) => cache.urls.includes(target));
@@ -103,12 +105,11 @@ export class ApiBinding {
       datas.caches.push(cache);
       this.caches.push(cache);
 
-      this.startBinding();
-
-      return cache.load().finally(this.stopBinding);
+      return cache.load();
     });
 
     Promise.all(promises).then((dataList) => {
+      this.stopBinding();
       if (this.array || pages) {
         this.vm[this.key] = dataList.filter((data) => data);
       } else {

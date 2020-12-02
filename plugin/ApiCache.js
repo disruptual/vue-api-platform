@@ -42,7 +42,7 @@ export class ApiCache {
       );
 
       if (!parentsLoading) {
-        this.load();
+        return this.load();
       }
     }
     if (isCollection(this.data_)) {
@@ -124,7 +124,7 @@ export class ApiCache {
         this.propagateError(error);
         throw error;
       })
-      .finallhy(() => {
+      .finally(() => {
         this.isLoading = false;
       });
 
