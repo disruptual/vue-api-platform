@@ -9,7 +9,7 @@ export class ApiBinding {
     this.targets = targets;
     this.caches = [];
     this.array = array;
-    this.reloadTimeout = null;
+    // this.reloadTimeout = null;
     this.stopBindingTimeout = null;
     this.isLoading = false;
     this.vm.$data.$apiBindings = [...this.vm.$data.$apiBindings, this];
@@ -119,12 +119,15 @@ export class ApiBinding {
   }
 
   reload() {
-    if (this.reloadTimeout) {
-      clearTimeout(this.reloadTimeout);
+    // if (this.reloadTimeout) {
+    //   clearTimeout(this.reloadTimeout);
+    // }
+    // this.reloadTimeout = setTimeout(() => {
+    // this.reloadTimeout = null;
+    if (this.isLoading) {
+      return;
     }
-    this.reloadTimeout = setTimeout(() => {
-      this.reloadTimeout = null;
-      this.bind();
-    }, 200);
+    this.bind();
+    // }, 200);
   }
 }
