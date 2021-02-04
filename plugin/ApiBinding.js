@@ -108,14 +108,17 @@ export class ApiBinding {
       return cache.load();
     });
 
-    Promise.all(promises).then((dataList) => {
-      this.stopBinding();
-      if (this.array || pages) {
-        this.vm[this.key] = dataList.filter((data) => data);
-      } else {
-        this.vm[this.key] = dataList[0];
-      }
-    });
+    Promise.all(promises)
+      .then((dataList) => {
+        if (this.array || pages) {
+          this.vm[this.key] = dataList.filter((data) => data);
+        } else {
+          this.vm[this.key] = dataList[0];
+        }
+      })
+      .finally(() => {
+        this.stopBinding();
+      });
   }
 
   reload() {
