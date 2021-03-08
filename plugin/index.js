@@ -58,7 +58,7 @@ export default {
       request: (url, config) => {
         const { excludedUrls } = datas.mercure;
 
-        if (excludedUrls.some((u) => url.includes(u))) {
+        if (excludedUrls && excludedUrls.some((u) => url.includes(u))) {
           return [url, config];
         }
 
