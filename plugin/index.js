@@ -56,6 +56,12 @@ export default {
 
     fetchIntercept.register({
       request: (url, config) => {
+        const { excludedUrls } = datas.mercure;
+
+        if (excludedUrls.some((u) => url.includes(u))) {
+          return [url, config];
+        }
+
         return [
           url,
           {
