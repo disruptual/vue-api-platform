@@ -68,8 +68,9 @@ export class ApiCache {
     this.data_ = value;
     this.update = new Date().getTime();
 
-    if (value === undefined || value === null) return;
-
+    if (value === undefined || value === null) {
+      return this.refreshBindings();
+    }
     const id = getDataId(value);
     if (id && !this.options.freezeUri) {
       this.uri = id;
@@ -122,6 +123,9 @@ export class ApiCache {
       .catch((error) => {
         this.abortController = null;
         this.propagateError(error);
+        if (this.options.refreshOnError) {
+          this.data = null;
+        }
         throw error;
       })
       .finally(() => {
