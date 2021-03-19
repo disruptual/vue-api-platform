@@ -105,7 +105,7 @@ export class ApiBinding {
       datas.caches.push(cache);
       this.caches.push(cache);
 
-      return cache.load();
+      return cache.load().catch((err) => null);
     });
 
     Promise.all(promises)
