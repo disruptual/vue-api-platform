@@ -131,6 +131,9 @@ export default {
               if (apiOptions[key].freezeUri) {
                 options.freezeUri = apiOptions[key].freezeUri;
               }
+              if (apiOptions[key].refreshOnError) {
+                options.refreshOnError = apiOptions[key].refreshOnError;
+              }
               if (apiOptions[key].force) {
                 options.force = apiOptions[key].force;
               }

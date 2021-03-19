@@ -100,6 +100,7 @@ export class ApiBinding {
       if (!cache) {
         cache = new ApiCache(target, this, null, null, {
           freezeUri: this.options.freezeUri,
+          refreshOnError: this.options.refreshOnError,
         });
       }
       datas.caches.push(cache);
