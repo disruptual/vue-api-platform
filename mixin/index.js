@@ -4,67 +4,69 @@ export default function (
     computed = null,
     expose = false,
     collection = false,
-    suffix = "_",
-    prefix = "",
+    model = null,
+    suffix = '_',
+    prefix = '',
     array = false,
     required = true,
     pages = null,
-    options = {},
+    options = {}
   } = {}
 ) {
   if (pages) {
-    options.pages = pages;
+    options.pages = pages
   }
-  const entity_ = prefix + entity + suffix;
+  options.model = model
+  const entity_ = prefix + entity + suffix
   const mixin = {
     data() {
       return {
-        [entity_]: array ? [] : null,
-      };
-    },
-  };
+        [entity_]: array ? [] : null
+      }
+    }
+  }
 
   if (computed) {
     mixin.api = {
-      [entity_]: options ? { ...options, func: computed } : computed,
-    };
+      [entity_]: options ? { ...options, func: computed } : computed
+    }
 
     if (expose) {
       if (collection) {
         mixin.computed = {
           [entity]() {
             if (!this[entity_]) {
-              return [];
+              return []
             }
             if (Array.isArray(this[entity_])) {
               return this[entity_].reduce((entities, page) => {
-                return [...entities, ...page["hydra:member"]];
-              }, []);
+                return [...entities, ...page['hydra:member']]
+              }, [])
             }
-            return this[entity_]["hydra:member"];
-          },
-        };
+            return this[entity_]['hydra:member']
+          }
+        }
       } else {
         mixin.computed = {
           [entity]() {
-            return this[entity_];
-          },
-        };
+            return this[entity_]
+          }
+        }
       }
     }
   } else {
     mixin.props = {
       [entity]: {
-        required,
-      },
-    };
+        required
+      }
+    }
     const func = function () {
-      return this[entity];
-    };
+      return this[entity]
+    }
     mixin.api = {
-      [entity_]: options ? { ...options, func } : func,
-    };
+      [entity_]: options ? { ...options, func } : func
+    }
   }
 
-  return mixin;
+  return mixin
 }
