@@ -195,16 +195,14 @@ export default {
       const binding = datas.bindings.find(
         binding => binding.vm === this && binding.key === key
       )
-      if (binding) {
-        binding.caches.forEach(cache => {
-          cache.load()
-        })
-      }
-
-      const cache = datas.caches.find(cache => cache.urls.includes(key))
-      if (cache) {
+      if (!binding) return
+      binding.caches.forEach(cache => {
         cache.load()
-      }
+      })
+
+      datas.caches
+        .filter(cache => cache.urls.some(url => binding.targets.includes(url)))
+        .forEach(cache => cache.load())
     }
 
     Vue.prototype.$cacheDataApi = cacheDatas
