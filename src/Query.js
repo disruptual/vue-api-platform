@@ -1,3 +1,5 @@
+import clone from 'clone-deep'
+
 export const LOADING_START = 'LOADING_START'
 export const LOADING_SUCCESS = 'LOADING_SUCCESS'
 export const LOADING_ERROR = 'LOADING_ERROR'
@@ -10,21 +12,24 @@ export default class Query extends EventTarget {
   static QUERY_IS_EXPIRED = 'QUERY_IS_EXPIRED'
 
   listenersCount = 0
+
   state = {
     isLoading: false,
-    isSyncing = false,
+    isRefreshing: false,
     data: null,
     error: null,
     isStale: false
   }
 
-  constructor(key, { cacheTime, staleTime }) {
+  constructor(key, { cacheTime, staleTime, manager } = {}) {
+    super()
     if (!key) {
       throw new Error('No key provided.')
     }
     this.key = key
     this._cacheTime = cacheTime
     this._staleTime = staleTime
+    this._manager = manager
   }
 
   _commit(action, payload) {
@@ -33,20 +38,20 @@ export default class Query extends EventTarget {
         if (!this.state.data) {
           this.state.isLoading = true
         }
-        this.state.isSyncing = true
+        this.state.isRefreshing = true
         break
       case LOADING_SUCCESS:
         this.state.data = payload
         this.state.error = null
         this.state.isLoading = false
-        this.state.isSyncing = false
+        this.state.isRefreshing = false
         this.state.isStale = false
         break
       case LOADING_ERROR:
         this.state.data = null
         this.state.error = payload
         this.state.isLoading = false
-        this.state.isSyncing = false
+        this.state.isRefreshing = false
         break
       case QUERY_HAS_BECOME_STALE:
         this.state.isStale = true
@@ -54,38 +59,42 @@ export default class Query extends EventTarget {
       default:
         throw new Error('unknown query action :', action)
     }
-    this.emit(Query.STATE_CHANGE)
+
+    this.emit(Query.STATE_CHANGE, clone(this.state))
   }
 
   _startStaleTimeout() {
     if (this._staleTime) {
       this._staleTimeout = setTimeout(() => {
         this._commit(QUERY_HAS_BECOME_STALE)
-      }, this._staleTime);
+      }, this._staleTime)
     }
   }
-  
+
   _startCacheTimeout() {
     if (this._cacheTime) {
       this._cacheTimeout = setTimeout(() => {
-        this._commit(QUERY_HAS_EXPIRED)
-      }, this._cacheTime);
+        this.emit(Query.QUERY_HAS_EXPIRED)
+      }, this._cacheTime)
     }
   }
 
   setData(data) {
     this._state.data = data
-    this.emit(Query.STATE_CHANGE)  }
+    this.emit(Query.STATE_CHANGE)
+    this.clearTimeout(this._staleTimeout)
+    this._startStaleTimeout()
+  }
 
   on(...args) {
-    this.listenersCount ++
+    this.listenersCount++
     if (this._cacheTimeout) clearTimeout(this._cacheTimeout)
 
     return this.addEventListener(...args)
   }
-  
+
   off(...args) {
-    this.listenersCount --
+    this.listenersCount--
     if (!this.listenersCount) {
       this._startCacheTimeout()
     }
@@ -93,34 +102,35 @@ export default class Query extends EventTarget {
     return this.removeEventListener(...args)
   }
 
-  emit(eventName) {
-    return this.dispatchEvent(eventName, this.state)
+  emit(eventName, payload) {
+    const event = new CustomEvent(eventName, { detail: payload })
+
+    return this.dispatchEvent(event)
   }
 
   get isFetching() {
-    return this.state.isLoading || this.state.isSyncing
+    return this.state.isLoading || this.state.isRefreshing
   }
 
-  async load({force = false} = {}) {
+  async load(fetcher, { force = false } = {}) {
     const isFresh = !this.state.isStale && this.state.data
-    if (!force && isFresh) return;
-    if (this.isFetching) return;
+    if (!force && isFresh) return
+    if (this.isFetching) return
 
-    this._commit(LOADING_START);
+    this._commit(LOADING_START)
 
-    if (this._staleTimeout) clearTimeout(this._staleTimeout);
+    if (this._staleTimeout) clearTimeout(this._staleTimeout)
 
     try {
-      const data = await fetcher(this.key);
-      this._commit(LOADING_SUCCESS, data);
+      const data = await fetcher(this.key)
+      this._commit(LOADING_SUCCESS, data)
       this.emit(Query.SUCCESS)
 
       this._startStaleTimeout()
 
-      return data;
+      return data
     } catch (err) {
-      console.error(err);
-      this._commit(LOADING_ERROR, err);
+      this._commit(LOADING_ERROR, err)
       this.emit(Query.ERROR)
     }
   }

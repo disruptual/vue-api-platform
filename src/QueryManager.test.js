@@ -50,11 +50,17 @@ describe('queryManager', () => {
     expect(manager.get('myKey')).toBeInstanceOf(Query)
   })
 
+  test('should throw when load a query with no fetcher', () => {
+    manager.create('myKey')
+
+    expect(() => manager.load('myKey')).toThrow()
+  })
+
   test('should load the query', () => {
     manager.create('myKey')
     const spy = jest.spyOn(manager.get('myKey'), 'load')
 
-    manager.load('myKey')
+    manager.load('myKey', () => {})
     expect(spy).toHaveBeenCalled()
   })
 })

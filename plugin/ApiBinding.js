@@ -116,6 +116,10 @@ export class ApiBinding {
           this.vm[this.key] = dataList.filter(data => data)
         } else {
           const [data] = dataList
+          if (!data) {
+            this.vm[this.key] = null
+          }
+
           const model = this.options.model
           if (!model) {
             this.vm[this.key] = data
