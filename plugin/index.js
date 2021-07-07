@@ -168,6 +168,8 @@ export default {
     })
 
     Vue.prototype.$bindApi = function (key, target, options = {}) {
+      if (!target) return
+
       const dataUrls = generateUrls(target)
       if (!dataUrls || dataUrls.length === 0) {
         this.$unbindApi(key)
@@ -197,12 +199,14 @@ export default {
       )
       if (!binding) return
       binding.caches.forEach(cache => {
-        cache.load()
+        cache.load({ force: true })
       })
 
       datas.caches
         .filter(cache => cache.urls.some(url => binding.targets.includes(url)))
-        .forEach(cache => cache.load())
+        .forEach(cache => {
+          cache.load({ force: true })
+        })
     }
 
     Vue.prototype.$cacheDataApi = cacheDatas
