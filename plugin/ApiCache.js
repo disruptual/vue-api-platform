@@ -122,7 +122,6 @@ export class ApiCache {
   }
 
   load({ force = false } = {}) {
-    console.log('load', this.uri, this.data_)
     if (this.isLoading) return this._fetchPromise
     if (this.isStatic && this.data_ && !force)
       return Promise.resolve(this.data_)
