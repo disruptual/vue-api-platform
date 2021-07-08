@@ -206,11 +206,7 @@ export class ApiCache {
     if (this.bindings.length > 0) return
 
     const delay = this.getDelay()
-
-    if (this.abortController) {
-      this.abortController.abort()
-      this.update = 0
-    }
+    this.update = 0
 
     if (this.isStatic) return
     this.deleteTimeout = setTimeout(() => {
