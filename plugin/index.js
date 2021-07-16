@@ -3,6 +3,7 @@ import { ApiCache } from './ApiCache'
 import { ApiBinding } from './ApiBinding'
 import { connectMercure, startMercure } from './mercure'
 import datas from './state'
+import { isObject } from './utils'
 
 const DEFAULT_DEBOUNCE_TIMEOUT = 200
 
@@ -12,7 +13,7 @@ const generateUrls = targets => {
       targets = [targets]
     }
     return targets.reduce((targets, target) => {
-      if (typeof target === 'object' && target.hasOwnProperty('@id')) {
+      if (isObject(target) && target['@id']) {
         targets.push(target['@id'])
       } else if (typeof target === 'string') {
         targets.push(target)

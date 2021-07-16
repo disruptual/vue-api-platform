@@ -1,18 +1,20 @@
-export const getDataId = (data) => {
+export const getDataId = data => {
   if (
-    data.hasOwnProperty("hydra:view") &&
-    data["hydra:view"].hasOwnProperty("@id")
+    data.hasOwnProperty('hydra:view') &&
+    data['hydra:view'].hasOwnProperty('@id')
   ) {
-    return data["hydra:view"]["@id"];
+    return data['hydra:view']['@id']
   }
-  if (data.hasOwnProperty("@id")) {
-    return data["@id"];
+  if (data.hasOwnProperty('@id')) {
+    return data['@id']
   }
-  return null;
-};
+  return null
+}
 
-export const isCollection = (value) =>
+export const isCollection = value =>
   value &&
-  typeof value === "object" &&
-  value.hasOwnProperty("@type") &&
-  value["@type"] === "hydra:Collection";
+  typeof value === 'object' &&
+  value.hasOwnProperty('@type') &&
+  value['@type'] === 'hydra:Collection'
+
+export const isObject = value => typeof value === 'object' && value !== null
