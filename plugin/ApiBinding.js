@@ -87,15 +87,18 @@ export class ApiBinding {
       let cache
 
       cache = this.caches.find(cache => cache.urls.includes(target))
+
       if (cache && !cache.isLoading && !this.options.force) {
         return Promise.resolve(cache.data)
       }
       cache = datas.caches.find(cache => cache.urls.includes(target))
 
-      if (cache && !cache.isLoading && !this.options.force) {
+      if (cache) {
         cache.addBinding(this)
         this.caches.push(cache)
-        return Promise.resolve(cache.data)
+        if (!cache.isLoading && !this.options.force) {
+          return Promise.resolve(cache.data)
+        }
       }
 
       if (!cache) {
