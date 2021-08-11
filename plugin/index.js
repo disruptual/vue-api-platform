@@ -169,7 +169,10 @@ export default {
     })
 
     Vue.prototype.$bindApi = function (key, target, options = {}) {
-      if (!target) return
+      if (!target) {
+        this[`${key}_`] = null
+        return
+      }
 
       const dataUrls = generateUrls(target)
       if (!dataUrls || dataUrls.length === 0) {

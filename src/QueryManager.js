@@ -30,7 +30,7 @@ export default class QueryManager {
   }
 
   create(key, options) {
-    if (typeof key !== 'string') {
+    if (key === undefined) {
       throw new Error('key argument required.')
     }
 

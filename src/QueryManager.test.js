@@ -9,7 +9,6 @@ describe('queryManager', () => {
   })
 
   test('should initialize without throwing', () => {
-    expect(QueryManager).toBeDefined()
     expect(() => new QueryManager()).not.toThrow()
   })
 
@@ -19,7 +18,6 @@ describe('queryManager', () => {
 
   test('should throw when creating a query without a correct key', () => {
     expect(() => manager.create()).toThrow()
-    expect(() => manager.create(1)).toThrow()
   })
 
   test('should throw when creating a query with an existing key', () => {
@@ -50,7 +48,7 @@ describe('queryManager', () => {
     expect(manager.get('myKey')).toBeInstanceOf(Query)
   })
 
-  test('should throw when load a query with no fetcher', () => {
+  test('should throw when loading a query with no fetcher', () => {
     manager.create('myKey')
 
     expect(() => manager.load('myKey')).toThrow()
