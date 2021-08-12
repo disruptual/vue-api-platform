@@ -6,9 +6,9 @@ import debounce from 'lodash.debounce'
 const CACHE_TIMEOUT = 1 * 1000 * 30 // 30 seconds
 
 let cacheEntriesToRemove = {}
-let cacheEntriesToCleanup = {}
+let cacheIdsToCleanup = []
 
-const batchRemove = () => {
+const batchRemovebinding = () => {
   datas.caches.forEach(cache => {
     const shouldCleanup = cache.parents.some(
       parent => cacheEntriesToRemove[parent.uri]
@@ -23,17 +23,23 @@ const batchRemove = () => {
 
 const batchCleanup = () => {
   datas.caches = datas.caches.filter(
-    cache => !!cacheEntriesToCleanup[cache.uri]
+    cache => !cacheIdsToCleanup.includes(cache.id)
   )
-  cacheEntriesToCleanup = {}
+  datas.bindings.forEach(binding => {
+    binding.caches = binding.caches.filter(
+      cache => !cacheIdsToCleanup.includes(cache.id)
+    )
+  })
+  cacheIdsToCleanup = []
 }
 
-const debouncedBatchRemove = debounce(batchRemove, 500)
+const debouncedBatchRemovebinding = debounce(batchRemovebinding, 500)
 const debouncedBatchCleanup = debounce(batchCleanup, 500)
 
 export class ApiCache {
   constructor(url, binding = null, data = null, parent = null, options = {}) {
     this.uri = data ? getDataId(data) : url
+    this.id = Math.random()
     this.data_ = null
     this.urls = [url]
     this.update = new Date().getTime()
@@ -92,28 +98,27 @@ export class ApiCache {
   set data(value) {
     this.data_ = value
     this.update = new Date().getTime()
-
     if (value === undefined || value === null) {
       return this.refreshBindings()
     }
     const id = getDataId(value)
-    if (id && !this.options.freezeUri) {
+    if (id && !this.options.freezeUri && id !== this.uri) {
       this.uri = id
     }
     if (isCollection(value)) {
       value['hydra:member'].forEach(member => {
         const id = getDataId(member)
-        if (id) {
-          let cache = datas.caches.find(
-            cache => cache.uri === id || cache.urls.includes(id)
-          )
-          if (cache) {
-            cache.data = member
-            cache.parents = uniq([...cache.parents, this])
-          } else {
-            cache = new ApiCache(id, null, member, this)
-            datas.caches.push(cache)
-          }
+        if (!id) return
+        let cache = datas.caches.find(
+          cache => cache.uri === id || cache.urls.includes(id)
+        )
+
+        if (cache) {
+          cache.data = member
+          cache.parents = uniq([...cache.parents, this])
+        } else {
+          cache = new ApiCache(id, null, member, this)
+          datas.caches.push(cache)
         }
       })
     }
@@ -196,7 +201,7 @@ export class ApiCache {
 
     if (!cacheEntriesToRemove[this.uri]) {
       cacheEntriesToRemove[this.uri] = this
-      debouncedBatchRemove()
+      debouncedBatchRemovebinding()
     }
 
     this.cleanup()
@@ -210,7 +215,7 @@ export class ApiCache {
 
     if (this.isStatic) return
     this.deleteTimeout = setTimeout(() => {
-      cacheEntriesToCleanup[this.uri] = this
+      cacheIdsToCleanup.push(this.id)
       debouncedBatchCleanup()
     }, Math.max(delay + 50, 50))
   }

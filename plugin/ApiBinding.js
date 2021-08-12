@@ -85,7 +85,6 @@ export class ApiBinding {
     const promises = targets.map(target => {
       this.startBinding()
       let cache
-
       cache = this.caches.find(cache => cache.urls.includes(target))
 
       if (cache && !cache.isLoading && !this.options.force) {
@@ -95,8 +94,8 @@ export class ApiBinding {
 
       if (cache) {
         cache.addBinding(this)
-        this.caches.push(cache)
         if (!cache.isLoading && !this.options.force) {
+          this.addInternalCache(cache)
           return Promise.resolve(cache.data)
         }
       }
@@ -108,7 +107,7 @@ export class ApiBinding {
         })
       }
       datas.caches.push(cache)
-      this.caches.push(cache)
+      this.addInternalCache(cache)
 
       return cache.load().catch(err => null)
     })
@@ -119,6 +118,7 @@ export class ApiBinding {
           this.vm[this.key] = dataList.filter(data => data)
         } else {
           const [data] = dataList
+
           if (!data) {
             this.vm[this.key] = null
           }
@@ -146,12 +146,20 @@ export class ApiBinding {
       })
   }
 
+  addInternalCache(apiCache) {
+    if (this.caches.some(c => c.uri === apiCache.uri)) return
+
+    this.caches.push(apiCache)
+  }
+
   reload() {
     // if (this.reloadTimeout) {
     //   clearTimeout(this.reloadTimeout);
     // }
     // this.reloadTimeout = setTimeout(() => {
     // this.reloadTimeout = null;
+    // this.log('RELOAD',this.isLoading)
+
     if (this.isLoading) {
       return
     }

@@ -23,19 +23,25 @@ const generateUrls = targets => {
   }
 }
 
-const cacheDatas = function (data) {
-  if (data['@id']) {
-    let cache = datas.caches.find(cache => cache.urls.includes(data['@id']))
-    if (!cache) {
-      cache = new ApiCache(data['@id'])
-      datas.caches.push(cache)
-    }
-    cache.data = data
+const findOrCreateCache = id => {
+  const cacheEntry = datas.caches.find(cache => cache.urls.includes(id))
+  if (cacheEntry) return cacheEntry
 
-    datas.mercure.listeners.forEach(listener => {
-      listener(data)
-    })
-  }
+  const newEntry = new ApiCache(id)
+  datas.caches.push(newEntry)
+
+  return newEntry
+}
+
+const cacheDatas = function (data) {
+  if (!data['@id']) return
+
+  const cache = findOrCreateCache(data['@id'])
+  cache.data = data
+
+  datas.mercure.listeners.forEach(listener => {
+    listener(data)
+  })
 }
 
 export default {
