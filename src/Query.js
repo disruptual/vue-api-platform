@@ -21,7 +21,7 @@ export default class Query extends EventTarget {
     isStale: false
   }
 
-  constructor(key, { cacheTime, staleTime, manager } = {}) {
+  constructor(key, { cacheTime, staleTime, manager, initialData } = {}) {
     super()
     if (!key) {
       throw new Error('No key provided.')
@@ -30,6 +30,9 @@ export default class Query extends EventTarget {
     this._cacheTime = cacheTime
     this._staleTime = staleTime
     this._manager = manager
+    if (initialData) {
+      this.state.data = initialData
+    }
   }
 
   _commit(action, payload) {
@@ -124,14 +127,14 @@ export default class Query extends EventTarget {
     try {
       const data = await fetcher(this.key)
       this._commit(LOADING_SUCCESS, data)
-      this.emit(Query.SUCCESS)
+      this.emit(Query.SUCCESS, clone(this.state))
 
       this._startStaleTimeout()
 
       return data
     } catch (err) {
       this._commit(LOADING_ERROR, err)
-      this.emit(Query.ERROR)
+      this.emit(Query.ERROR, clone(this.state))
     }
   }
 }

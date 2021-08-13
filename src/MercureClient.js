@@ -4,7 +4,9 @@ window.EventSource = NativeEventSource || EventSourcePolyfill
 
 const LINK_REGEXP = /<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/
 
-export default class MercureService extends EventTarget {
+export default class MercureClient extends EventTarget {
+  static MESSAGE = 'message'
+
   _eventSource = null
   _hubUrl = null
   _topics = []
@@ -32,7 +34,7 @@ export default class MercureService extends EventTarget {
   }
 
   onMessage(e) {
-    this.dispatchEvent('message', e)
+    this.dispatchEvent(MercureClient.MESSAGE, e)
   }
 
   connect() {

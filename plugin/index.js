@@ -176,7 +176,7 @@ export default {
 
     Vue.prototype.$bindApi = function (key, target, options = {}) {
       if (!target) {
-        this[`${key}_`] = null
+        this[key] = null
         return
       }
 
