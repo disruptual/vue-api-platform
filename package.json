@@ -1,6 +1,6 @@
 {
   "name": "vue-api-platform",
-  "version": "0.9.28",
+  "version": "0.9.29",
   "description": "Link between APIPlatform (and mercure) and Vuejs",
   "main": "index.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "clone-deep": "^4.0.1",
     "jest": "^26.6.3",
     "jest-extended": "^0.11.5",
-    "lodash": "^4.17.15"
+    "lodash": "^4.17.21"
   },
   "jest": {
     "setupFilesAfterEnv": [

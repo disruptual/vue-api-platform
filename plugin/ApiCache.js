@@ -76,19 +76,20 @@ export class ApiCache {
         return this.load()
       }
     }
+
     if (isCollection(this.data_)) {
       return {
         ...this.data_,
-        'hydra:member': this.data_['hydra:member'].reduce((members, member) => {
+        'hydra:member': this.data_['hydra:member'].map(entity => {
           const cache = datas.caches.find(cache =>
-            cache.urls.includes(getDataId(member))
+            cache.urls.includes(getDataId(entity))
           )
-          const data = cache ? cache.data : member
-          if (data) {
-            members.push(data)
-          }
-          return members
-        }, [])
+          if (!cache) return entity
+          const isCacheExpired = cache.getDelay() < 0
+          if (isCacheExpired) return entity
+
+          return cache.data
+        })
       }
     } else {
       return this.data_
