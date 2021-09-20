@@ -11,6 +11,7 @@ export const connectMercure = url => {
     const target = data['@id']
 
     let cache = datas.caches.find(cache => cache.urls.includes(target))
+    // a mercure update always have at least thie '@id' property
     if (Object.keys(data).length <= 1) return
 
     if (cache) {
