@@ -1,7 +1,7 @@
-import uniq from 'lodash.uniq'
+import uniq from 'lodash/uniq'
 import datas from './state'
 import { getDataId, isCollection } from './utils'
-import debounce from 'lodash.debounce'
+import debounce from 'lodash/debounce'
 
 const CACHE_TIMEOUT = 1 * 1000 * 30 // 30 seconds
 
