@@ -117,7 +117,7 @@ export class ApiBinding {
         const model = this.options.model
         if (this.array || pages) {
           this.vm[this.key] = dataList.map(data =>
-            model ? data : new model(data)
+            model ? new model(data) : data
           )
         } else {
           const [data] = dataList
