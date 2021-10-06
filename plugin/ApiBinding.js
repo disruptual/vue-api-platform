@@ -133,9 +133,11 @@ export class ApiBinding {
             this.vm[this.key] = {
               ...data,
               ['hydra:member']: data['hydra:member'].map(
-                member => new model(member)
+                entity => new model(entity)
               )
             }
+          } else if (Array.isArray(data)) {
+            this.vm[this.key] = data.map(entity => new model(entity))
           } else {
             this.vm[this.key] = new model(data)
           }
