@@ -114,8 +114,11 @@ export class ApiBinding {
 
     Promise.all(promises)
       .then(dataList => {
+        const model = this.options.model
         if (this.array || pages) {
-          this.vm[this.key] = dataList.filter(data => data)
+          this.vm[this.key] = dataList.map(data =>
+            model ? data : new model(data)
+          )
         } else {
           const [data] = dataList
 
@@ -123,7 +126,6 @@ export class ApiBinding {
             this.vm[this.key] = null
           }
 
-          const model = this.options.model
           if (!model) {
             this.vm[this.key] = data
             return
