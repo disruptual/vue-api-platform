@@ -131,6 +131,9 @@ export default {
               if (bindingOptions.freezeUri) {
                 options.freezeUri = bindingOptions.freezeUri
               }
+              if (bindingOptions.noSync) {
+                options.noSync = bindingOptions.noSync
+              }
               if (bindingOptions.refreshOnError) {
                 options.refreshOnError = bindingOptions.refreshOnError
               }

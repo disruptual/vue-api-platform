@@ -180,6 +180,7 @@ export class ApiCache {
       binding.reload()
     })
     this.parents.forEach(parent => {
+      if (parent.options.noSync) return
       parent.refreshBindings()
     })
   }
