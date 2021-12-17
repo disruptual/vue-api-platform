@@ -128,7 +128,7 @@ export class ApiCache {
   }
 
   load({ force = false } = {}) {
-    if (this.isLoading) return this._fetchPromise
+    if (this.isLoading) return this._requestPromise
     if (this.isStatic && this.data_ && !force)
       return Promise.resolve(this.data_)
 
@@ -136,21 +136,13 @@ export class ApiCache {
     if (this.abortController) this.abortController.abort()
     this.abortController = new AbortController()
 
-    this._fetchPromise = fetch(this.uri, {
-      signal: this.abortController.signal
-    })
-      .then(response => {
-        if (response.ok) {
-          return response.json().then(data => {
-            this.isStatic = datas.staticContexts.includes(data['@context'])
-            this.abortController = null
-            this.data = data
-            return data
-          })
-        } else {
-          this.propagateError(response)
-          throw response
-        }
+    this._requestPromise = datas.http
+      .get(this.uri, { signal: this.abortController.signal })
+      .then(({ data }) => {
+        this.isStatic = datas.staticContexts.includes(data['@context'])
+        this.abortController = null
+        this.data = data
+        return data
       })
       .catch(error => {
         this.abortController = null
@@ -164,7 +156,7 @@ export class ApiCache {
         this.isLoading = false
       })
 
-    return this._fetchPromise
+    return this._requestPromise
   }
 
   propagateError(error) {

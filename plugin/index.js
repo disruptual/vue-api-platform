@@ -1,4 +1,3 @@
-import fetchIntercept from '@neorel/fetch-intercept'
 import { ApiCache } from './ApiCache'
 import { ApiBinding } from './ApiBinding'
 import { connectMercure, startMercure } from './mercure'
@@ -51,7 +50,8 @@ export default {
       debounce = false,
       debounceTimeout = DEFAULT_DEBOUNCE_TIMEOUT,
       staticContexts = [],
-      mercure = {}
+      mercure = {},
+      http
     }
   ) {
     Object.assign(datas.mercure, mercure)
@@ -62,40 +62,23 @@ export default {
       window.ApiDatas = datas
     }
 
-    fetchIntercept.register({
-      request: (url, config) => {
-        const { excludedUrls } = datas.mercure
-
-        if (excludedUrls && excludedUrls.some(u => url.includes(u))) {
-          return [url, config]
+    http
+      .onRequest(config => {
+        return {
+          ...config,
+          credentials: datas.mercure.withCredentials ? 'include' : 'omit'
         }
-
-        return [
-          url,
-          {
-            ...config,
-            credentials: datas.mercure.withCredentials ? 'include' : 'omit'
-          }
-        ]
-      },
-      requestError: error => Promise.reject(error),
-      response: response => {
-        if (!response.ok) return response
+      })
+      .onResponse(config => {
         startMercure(response)
         const { request } = response
         if (request && ['PUT', 'POST', 'PATCH'].includes(request.method)) {
-          response
-            .clone()
-            .json()
-            .then(cacheDatas)
-            .catch(e => {
-              //nothing
-            })
+          cacheDatas(response.data)
         }
         return response
-      },
-      responseError: error => Promise.reject(error)
-    })
+      })
+
+    datas.http = http
 
     Vue.config.optionMergeStrategies.api =
       Vue.config.optionMergeStrategies.methods
@@ -106,74 +89,58 @@ export default {
           $apiBindings: []
         }
       },
+
       created() {
         const apiOptions = this.$options.api
-        if (apiOptions) {
-          Object.entries(apiOptions).forEach(([key, bindingOptions]) => {
-            let func = null
-            const options = {}
-            if (typeof bindingOptions === 'function') {
-              func = bindingOptions
-            } else {
-              if (typeof bindingOptions.func === 'function') {
-                func = bindingOptions.func
-              }
-
-              if (typeof bindingOptions.pages === 'function') {
-                options.pages = bindingOptions.pages.bind(this)()
-              }
-              if (bindingOptions.debounce) {
-                options.debounce = !!bindingOptions.debounce
-              }
-              if (bindingOptions.debounceTimeout) {
-                options.debounceTimeout = bindingOptions.debounceTimeout
-              }
-              if (bindingOptions.freezeUri) {
-                options.freezeUri = bindingOptions.freezeUri
-              }
-              if (bindingOptions.noSync) {
-                options.noSync = bindingOptions.noSync
-              }
-              if (bindingOptions.refreshOnError) {
-                options.refreshOnError = bindingOptions.refreshOnError
-              }
-              if (bindingOptions.force) {
-                options.force = bindingOptions.force
-              }
-              if (bindingOptions.model) {
-                options.model = bindingOptions.model
-              }
+        if (!apiOptions) return
+        Object.entries(apiOptions).forEach(([key, bindingOptions]) => {
+          let func = null
+          const options = {}
+          if (typeof bindingOptions === 'function') {
+            func = bindingOptions
+          } else {
+            if (typeof bindingOptions.func === 'function') {
+              func = bindingOptions.func
             }
-            if (!func) return
-            this.$watch(
-              func.bind(this),
-              newVal => {
-                this.$bindApi(key, newVal, options)
-              },
-              { immediate: true }
-            )
-            // if (bindingOptions) {
-            //   this.$watch(apiOptions[key].pages.bind(this), (newVal) => {
-            //     const binding = datas.bindings.find(
-            //       (binding) => binding.vm === this && binding.key === key
-            //     );
-            //     if (binding) {
-            //       options.pages = newVal;
-            //       binding.options = options;
-            //       binding.bind();
-            //     }
-            //   });
-            // }
-          })
-        }
+            if (bindingOptions.debounce) {
+              options.debounce = !!bindingOptions.debounce
+            }
+            if (bindingOptions.debounceTimeout) {
+              options.debounceTimeout = bindingOptions.debounceTimeout
+            }
+            if (bindingOptions.freezeUri) {
+              options.freezeUri = bindingOptions.freezeUri
+            }
+            if (bindingOptions.noSync) {
+              options.noSync = bindingOptions.noSync
+            }
+            if (bindingOptions.refreshOnError) {
+              options.refreshOnError = bindingOptions.refreshOnError
+            }
+            if (bindingOptions.force) {
+              options.force = bindingOptions.force
+            }
+            if (bindingOptions.model) {
+              options.model = bindingOptions.model
+            }
+          }
+          if (!func) return
+          this.$watch(
+            func.bind(this),
+            newVal => {
+              this.$bindApi(key, newVal, options)
+            },
+            { immediate: true }
+          )
+        })
       },
+
       beforeDestroy() {
         const apiOptions = this.$options.api
-        if (apiOptions) {
-          Object.keys(apiOptions).forEach(key => {
-            this.$unbindApi(key)
-          })
-        }
+        if (!apiOptions) return
+        Object.keys(apiOptions).forEach(key => {
+          this.$unbindApi(key)
+        })
       }
     })
 

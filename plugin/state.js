@@ -6,6 +6,7 @@ export default {
   mercure: {
     listeners: [],
     topics: [],
-    withCredentials: true,
+    withCredentials: true
   },
-};
+  http: null
+}
