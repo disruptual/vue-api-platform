@@ -47,9 +47,9 @@ export const startMercure = response => {
       !datas.eventSource &&
       response.headers.Link
     ) {
-      const matches = response.headers.Link.match(
-        /<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/
-      )
+      const matches = response.headers
+        .get('Link')
+        .match(/<([^>]+)>;\s+rel=(?:mercure|"[^"]*mercure[^"]*")/)
       if (matches) {
         const hubUrl = matches[1]
         const url = new URL(hubUrl)
