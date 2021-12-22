@@ -138,7 +138,7 @@ export class ApiCache {
 
     this._requestPromise = datas.http
       .get(this.uri, { signal: this.abortController.signal })
-      .then(({ data }) => {
+      .then(data => {
         this.isStatic = datas.staticContexts.includes(data['@context'])
         this.abortController = null
         this.data = data
